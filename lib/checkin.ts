@@ -1,0 +1,57 @@
+import type { Lang } from "./types";
+
+// Everything the app remembers lives in the parent's own browser.
+// Storage can be missing, full, or corrupt; none of that may break the page.
+
+export type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+export type SavedCheckIn = { question: string; whenLabel: string; trying: string; lang: Lang; dueAt: number };
+
+const CHECKIN = "saath.checkin";
+const ITEMS = "saath.items";
+
+function read(s: Store, key: string): unknown {
+  try {
+    return JSON.parse(s.getItem(key) ?? "null");
+  } catch {
+    return null;
+  }
+}
+
+function write(s: Store, key: string, value: unknown) {
+  try {
+    s.setItem(key, JSON.stringify(value));
+  } catch {
+    // private mode or quota: carry on without saving
+  }
+}
+
+export const saveCheckIn = (s: Store, c: SavedCheckIn) => write(s, CHECKIN, c);
+
+export function peekCheckIn(s: Store): SavedCheckIn | null {
+  const c = read(s, CHECKIN) as SavedCheckIn | null;
+  return c && typeof c === "object" && typeof c.question === "string" && typeof c.dueAt === "number" ? c : null;
+}
+
+export function dueCheckIn(s: Store, now: number): SavedCheckIn | null {
+  const c = peekCheckIn(s);
+  return c && now >= c.dueAt ? c : null;
+}
+
+export function clearCheckIn(s: Store) {
+  try {
+    s.removeItem(CHECKIN);
+  } catch {}
+}
+
+export const saveItems = (s: Store, items: unknown[]) => write(s, ITEMS, items);
+
+export function loadItems(s: Store): unknown[] {
+  const v = read(s, ITEMS);
+  return Array.isArray(v) ? v : [];
+}
+
+export function clearItems(s: Store) {
+  try {
+    s.removeItem(ITEMS);
+  } catch {}
+}
