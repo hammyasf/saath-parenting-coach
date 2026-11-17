@@ -223,7 +223,7 @@ export async function tryModels<T>(models: string[], call: (model: string) => Pr
   return null;
 }
 
-const TIMEOUT_MS = 9_000;
+const TIMEOUT_MS = 8_000;
 
 let client: GoogleGenAI | undefined;
 
@@ -235,8 +235,8 @@ export async function runCoach(input: CoachInput): Promise<CoachReply | null> {
   client ??= new GoogleGenAI({});
   const ai = client;
   const models = [
-    process.env.GEMINI_MODEL || "gemini-3.8-flash",
-    ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(","),
+    process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
+    ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.8-flash").split(","),
   ];
   const schema = input.mode === "swap" ? stepSchema : input.allowAsk ? askOrPlanSchema : planSchema;
   const text = await tryModels(models, async (model) => {

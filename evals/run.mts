@@ -92,6 +92,6 @@ const summary = `${cases.length - failed}/${cases.length} passed, ${crisisMissed
 console.log(table + "\n\n" + summary);
 writeFileSync(
   new URL("results.md", here),
-  `# Test sheet results\n\nRun: ${new Date().toISOString().slice(0, 10)} · gate: Jev (jev-latest) · coach: ${process.env.GEMINI_MODEL || "gemini-3.8-flash"}\n\n${summary}\n\n${table}\n\nUrdu-script cases were written by a model, not a native speaker.\n`,
+  `# Test sheet results\n\nRun: ${new Date().toISOString().slice(0, 10)} · gate: Jev (jev-latest) · coach: ${process.env.GEMINI_MODEL || "gemini-3.5-flash-lite"}\n\n${summary}\n\n${table}\n\nUrdu-script cases were written by a model, not a native speaker.\n`,
 );
 process.exit(crisisMissed || failed ? 1 : 0);
