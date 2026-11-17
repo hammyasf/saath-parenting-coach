@@ -42,6 +42,8 @@
   --m-press: 90ms;
   --m-ease: cubic-bezier(0.2, 0, 0, 1);
 
+  --shadow: 0 1px 2px color-mix(in oklab, var(--ink) 4%, transparent), 0 12px 32px -16px color-mix(in oklab, var(--ink) 14%, transparent);
+
   --nav: 72px;
   --gut: 80px;
 
@@ -58,6 +60,7 @@
     --muted: #a3a3a3;
     --action: #4fae70;
     --action-ink: #06140b;
+    --shadow: none;
   }
 }
 
@@ -440,12 +443,12 @@ button.opt:active:not(:disabled),
 }
 
 .hero__text {
-  grid-column: 1 / span 5;
+  grid-column: 1 / span 6;
   align-self: start;
 }
 
 .hero__media {
-  grid-column: 7 / span 6;
+  grid-column: 8 / span 5;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -484,7 +487,6 @@ button.opt:active:not(:disabled),
 .hero .composer {
   margin-top: var(--s-6);
   padding: 0;
-  border: 0;
 }
 
 .starters {
@@ -601,9 +603,16 @@ button.opt:active:not(:disabled),
     animation-delay: 180ms;
   }
   /* a new reply settles in once */
-  .thread > .card,
-  .thread > .mine {
+  .thread__col > .card,
+  .thread__col > .mine {
     animation: enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  /* a step opening, the swap reasons, the check-in answers: they arrive, they do not pop */
+  .step__more:not([hidden]),
+  .swap,
+  .checkin > .row,
+  .plan__status {
+    animation: enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 
@@ -618,10 +627,6 @@ button.opt:active:not(:disabled),
 .talk {
   height: 100dvh;
   padding-top: var(--nav);
-}
-
-.talk__col {
-  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -634,14 +639,26 @@ button.opt:active:not(:disabled),
   width: 100%;
 }
 
+/* the scroller is as wide as the page, so its scrollbar sits at the window edge, not on a card */
 .thread {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--s-6) 0 var(--s-4);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+  /* replies fade out under the message box instead of being cut by a line */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.thread__col {
+  padding: var(--s-5) 0 var(--s-6);
   display: flex;
   flex-direction: column;
   gap: var(--s-4);
-  scrollbar-width: thin;
+}
+
+.thread__col > * {
+  scroll-margin-top: var(--s-4);
 }
 
 .mine {
@@ -660,6 +677,7 @@ button.opt:active:not(:disabled),
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--card);
+  box-shadow: var(--shadow);
   overflow-wrap: anywhere;
 }
 
@@ -902,17 +920,77 @@ button.opt:active:not(:disabled),
   font-weight: 500;
 }
 
-/* the foot of a plan: share it, and the quiet help link */
+/* the foot of a plan: share it */
 .plan__foot {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-top: var(--s-3);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-4);
 }
 
-.plan__foot .link {
-  font-size: var(--t-body);
+.quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--btn-h);
+  padding: 0 var(--s-4) 0 var(--s-3);
+  border: 0;
+  border-radius: var(--r-btn);
+  background: none;
+  color: var(--muted);
+  font-size: var(--t-small);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background var(--m-out) var(--m-ease),
+    color var(--m-out) var(--m-ease);
+}
+
+.quiet:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.quiet__icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.plan__status {
+  font-size: var(--t-small);
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.plan__support {
+  display: block;
+  margin-top: var(--s-2);
+  min-height: 0;
+  padding: var(--s-2) 0;
+  color: var(--muted);
   font-weight: 400;
+}
+
+.tick {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -3px;
+}
+
+.saved {
+  gap: var(--s-1);
+  color: var(--action);
 }
 
 /* crisis: calm and plain. No red, no alarm; the numbers carry the weight. */
@@ -1054,8 +1132,7 @@ button.opt:active:not(:disabled),
 
 /* ---------- the message box ---------- */
 .composer {
-  padding: var(--s-3) 0;
-  border-top: 1px solid var(--line);
+  padding: var(--s-2) 0 var(--s-3);
 }
 
 .field-label {
@@ -1070,35 +1147,72 @@ button.opt:active:not(:disabled),
   line-height: 2;
 }
 
-.composer form {
+/* in a conversation the box needs no visible label: the placeholder and the thread say what it is */
+.talk .field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* one shell: the box and its send button read as a single control */
+.composer__shell {
   display: flex;
   align-items: flex-end;
   gap: var(--s-2);
+  padding: 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  transition:
+    border-color var(--m-in) var(--m-ease),
+    box-shadow var(--m-in) var(--m-ease);
+}
+
+.composer__shell:hover {
+  border-color: color-mix(in oklab, var(--ink) 45%, transparent);
+}
+
+.composer__shell:focus-within {
+  border-color: var(--action);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--action) 22%, transparent);
 }
 
 .composer textarea {
   flex: 1;
-  min-height: 48px;
+  min-width: 0;
+  min-height: 44px;
   max-height: 160px;
-  padding: 11px var(--s-4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-lg);
-  background: var(--card);
+  padding: 10px var(--s-3) 10px var(--s-4);
+  border: 0;
+  background: none;
   resize: none;
   field-sizing: content;
-  transition: border-color var(--m-in) var(--m-ease);
-}
-
-.composer textarea:hover {
-  border-color: color-mix(in oklab, var(--ink) 45%, transparent);
+  outline: none;
 }
 
 .composer textarea::placeholder {
   color: var(--muted);
 }
 
-.composer .btn {
-  min-height: 48px;
+.send {
+  flex: none;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .inline-note {
@@ -1119,8 +1233,9 @@ button.opt:active:not(:disabled),
 }
 
 .demo {
-  margin-bottom: var(--s-2);
-  min-height: 36px;
+  display: block;
+  margin: 0 0 var(--s-2) auto;
+  min-height: 32px;
   padding: 0 var(--s-3);
   border: 1px dashed var(--line-strong);
   border-radius: var(--r-sm);
@@ -1159,4 +1274,12 @@ button.opt:active:not(:disabled),
   .call {
     transform: none !important;
   }
+}
+
+/* Nastaliq hangs below the Latin baseline: lift it so words sit in the middle of a pill */
+.btn:lang(ur),
+.opt:lang(ur),
+.chip:lang(ur),
+.quiet:lang(ur) {
+  padding-bottom: 8px;
 }

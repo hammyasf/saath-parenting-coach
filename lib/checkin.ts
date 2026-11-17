@@ -12,6 +12,8 @@ export type SavedCheckIn = {
   steps?: string[];
   lang: Lang;
   dueAt: number;
+  /** The plan card this reminder was set on, so the card still shows it after a reload. */
+  planId?: string;
 };
 
 const NO_STORE: Store = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
@@ -56,6 +58,7 @@ export function peekCheckIn(s: Store): SavedCheckIn | null {
     str(c.trying) &&
     ["en", "ur", "roman-ur"].includes(c.lang) &&
     Number.isFinite(c.dueAt) &&
+    (c.planId === undefined || str(c.planId)) &&
     (c.steps === undefined || (Array.isArray(c.steps) && c.steps.every(str)))
     ? c
     : null;

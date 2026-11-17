@@ -67,12 +67,14 @@ export default function Chat() {
   const busy = useRef(false);
   const box = useRef<HTMLTextAreaElement>(null);
   const end = useRef<HTMLDivElement>(null);
+  const thread = useRef<HTMLDivElement>(null);
 
   // Restore what this browser remembers. Runs once, after first paint, so the server and client render match.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
     setItems(loadItems(store()).filter(isItem));
     setDue(dueCheckIn(store(), Date.now()));
+    setReminded(peekCheckIn(store())?.planId ?? null);
     setDemo(new URLSearchParams(window.location.search).has("demo"));
     const r = store().getItem("saath.region");
     setRegion(r === "pk" || r === "ae" || r === "other" ? r : guessRegion());
@@ -83,8 +85,17 @@ export default function Chat() {
   useEffect(() => {
     itemsRef.current = items;
     if (loaded) saveItems(store(), items);
-    end.current?.scrollIntoView({ block: "end" });
-  }, [items, loaded, pending, due]);
+  }, [items, loaded]);
+
+  // Where to look after something new arrives: the top of a new reply (a plan is taller than
+  // the screen), otherwise the newest thing. Ticking a step or swapping one must not move the page.
+  const last = items.at(-1);
+  const lastReply = last?.kind === "reply" ? last.id : null;
+  useEffect(() => {
+    const reply = !pending && !due && lastReply ? thread.current?.querySelector(":scope > article:last-of-type") : null;
+    if (reply) reply.scrollIntoView({ block: "start" });
+    else end.current?.scrollIntoView({ block: "end" });
+  }, [items.length, lastReply, pending, due, loaded]);
 
   const hadCrisis = items.some((it) => it.kind === "reply" && it.response.kind === "crisis");
 
@@ -202,7 +213,7 @@ export default function Chat() {
 
   function remind(id: string, plan: Plan, lang: Lang) {
     // eslint-disable-next-line react-hooks/purity -- runs on click, never during render
-    saveCheckIn(store(), checkInOf(plan, lang, Date.now() + plan.checkIn.afterHours * 3_600_000));
+    saveCheckIn(store(), { ...checkInOf(plan, lang, Date.now() + plan.checkIn.afterHours * 3_600_000), planId: id });
     setReminded(id);
   }
 
@@ -210,14 +221,26 @@ export default function Chat() {
   async function sharePlan(plan: Plan, lang: Lang): Promise<"shared" | "copied" | "failed"> {
     const text = planToText(plan, lang);
     try {
-      if (navigator.share) {
+      // The share sheet only where it is the normal way to share: a touch device.
+      if (navigator.share && matchMedia("(pointer: coarse)").matches) {
         await navigator.share({ text });
         return "shared";
       }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return "shared"; // the parent closed the sheet
+    }
+    try {
       await navigator.clipboard.writeText(text);
       return "copied";
     } catch {
-      return "failed"; // dismissed the sheet, or the browser refused
+      // Clipboard API refused (no permission, not focused): the older copy command still works.
+      const area = Object.assign(document.createElement("textarea"), { value: text });
+      area.style.cssText = "position:fixed;opacity:0";
+      document.body.append(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      area.remove();
+      return ok ? "copied" : "failed";
     }
   }
 
@@ -245,14 +268,15 @@ export default function Chat() {
     send(`${c.question} ${answer}${answer.endsWith(".") ? "" : "."}${tried}`, label);
   }
 
-  /** Answer the check-in right away, with the same three taps as when it comes due. */
-  function answerNow(plan: Plan, lang: Lang) {
-    // eslint-disable-next-line react-hooks/purity -- runs on click, never during render
-    setDue(checkInOf(plan, lang, Date.now()));
-  }
+  const lastPlan = items.findLast((it) => it.kind === "reply" && it.response.kind === "plan");
 
+  /** Demo only: bring the check-in forward, from the saved reminder or else the newest plan. */
   function skipToCheckIn() {
-    const c = peekCheckIn(store());
+    const c =
+      peekCheckIn(store()) ??
+      (lastPlan?.kind === "reply" && lastPlan.response.kind === "plan"
+        ? checkInOf(lastPlan.response.plan, lastPlan.response.lang, 0)
+        : null);
     if (!c) return;
     const now = { ...c, dueAt: Date.now() };
     saveCheckIn(store(), now);
@@ -280,8 +304,8 @@ export default function Chat() {
 
   const composer = (
     <div className="composer">
-      {demo && active && (
-        <button type="button" className="demo" onClick={skipToCheckIn} disabled={!reminded}>
+      {demo && lastPlan && !due && (
+        <button type="button" className="demo" onClick={skipToCheckIn} disabled={pending}>
           {t("skipDemo", "en")}
         </button>
       )}
@@ -289,6 +313,7 @@ export default function Chat() {
         {t("fieldLabel", ui)}
       </label>
       <form
+        className="composer__shell"
         onSubmit={(e) => {
           e.preventDefault();
           send(text);
@@ -313,8 +338,10 @@ export default function Chat() {
             }
           }}
         />
-        <button type="submit" className="btn btn--primary" disabled={pending}>
-          {t("send", ui)}
+        <button type="submit" className="btn btn--primary send" disabled={pending || !text.trim()} aria-label={t("send", ui)}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
+          </svg>
         </button>
       </form>
       {note && (
@@ -373,10 +400,9 @@ export default function Chat() {
       <main id="top">
         {active ? (
           <section className="talk">
-            <div className="wrap wrap--narrow talk__col">
               <h1 className="sr-only">Saath, your parenting coach</h1>
               {(hadCrisis || showHelp) && (
-                <div className="pinned">
+                <div className="wrap wrap--narrow pinned">
                   {showHelp ? (
                     <HelpBox lang={ui} region={region} onClose={() => setShowHelp(false)} />
                   ) : (
@@ -387,6 +413,7 @@ export default function Chat() {
                 </div>
               )}
               <div className="thread">
+                <div className="wrap wrap--narrow thread__col" ref={thread}>
                 {items.map((it) =>
                   it.kind === "parent" ? (
                     <p key={it.id} className="mine" dir="auto">
@@ -406,7 +433,10 @@ export default function Chat() {
                       onSwap={(i, reason) => swapStep(it.id, i, reason)}
                       onRemind={() => it.response.kind === "plan" && remind(it.id, it.response.plan, it.response.lang)}
                       onCalendar={downloadCalendar}
-                      onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan, it.response.lang)}
+                      onAnswer={(a, label) =>
+                        it.response.kind === "plan" &&
+                        answerCheckIn(checkInOf(it.response.plan, it.response.lang, 0), a, label)
+                      }
                       onShare={async () =>
                         it.response.kind === "plan" ? sharePlan(it.response.plan, it.response.lang) : "failed"
                       }
@@ -429,9 +459,9 @@ export default function Chat() {
                 {due && !pending && <CheckInCard c={due} onAnswer={(a, label) => answerCheckIn(due, a, label)} />}
                 {pending && <Skeleton label={t("thinking", ui)} />}
                 <div ref={end} />
+                </div>
               </div>
-              {composer}
-            </div>
+              <div className="wrap wrap--narrow">{composer}</div>
           </section>
         ) : (
           <section className="hero" data-enter>

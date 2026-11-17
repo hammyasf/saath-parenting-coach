@@ -71,7 +71,7 @@ export function AskCard({
       ))}
       {!answered && (
         <div className="row ask__actions">
-          <button type="button" className="btn btn--secondary" disabled={!picked.some(Boolean)} onClick={answer}>
+          <button type="button" className="btn btn--primary" disabled={!picked.some(Boolean)} onClick={answer}>
             {t("getPlan", lang)}
           </button>
           <button type="button" className="link" onClick={() => onAnswer(t("skipAsk", lang), t("skipAsk", lang))}>
@@ -80,6 +80,59 @@ export function AskCard({
         </div>
       )}
     </article>
+  );
+}
+
+function Tick() {
+  return (
+    <svg className="tick" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m3.5 8.5 3 3 6-7" />
+    </svg>
+  );
+}
+
+/** Better / Same / Harder, then (if it did not go well) which step. Used on the plan and on a due check-in. */
+function CheckInAnswers({
+  lang,
+  steps,
+  onAnswer,
+}: {
+  lang: Lang;
+  steps: string[];
+  onAnswer: (answer: string, label: string) => void;
+}) {
+  const [how, setHow] = useState<string | null>(null);
+  if (how === null)
+    return (
+      <div className="row">
+        {(["better", "same", "harder"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className="opt"
+            onClick={() => (k === "better" || steps.length < 2 ? onAnswer(t(k, lang), t(k, lang)) : setHow(t(k, lang)))}
+          >
+            {t(k, lang)}
+          </button>
+        ))}
+      </div>
+    );
+  return (
+    <>
+      <p className="eyebrow">{t("whichStep", lang)}</p>
+      <div className="row">
+        {[...steps, t("allSteps", lang)].map((s) => (
+          <button
+            key={s}
+            type="button"
+            className="opt"
+            onClick={() => onAnswer(`${how}. ${t("whichStep", lang)} ${s}.`, `${how} · ${s}`)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -95,7 +148,7 @@ export function PlanCard({
   onSwap,
   onRemind,
   onCalendar,
-  onAnswerNow,
+  onAnswer,
   onShare,
   onHelp,
 }: {
@@ -111,12 +164,14 @@ export function PlanCard({
   onSwap: (index: number, reason: string) => void;
   onRemind: () => void;
   onCalendar: () => void;
-  onAnswerNow: () => void;
+  /** The parent answers the check-in right on the card. */
+  onAnswer: (answer: string, label: string) => void;
   onShare: () => Promise<"shared" | "copied" | "failed">;
   onHelp: () => void;
 }) {
   const [open, setOpen] = useState<number | null>(0);
-  const [copied, setCopied] = useState(false);
+  const [shared, setShared] = useState<"copied" | "failed" | null>(null);
+  const [answering, setAnswering] = useState(false);
   const [asking, setAsking] = useState<number | null>(null);
   return (
     <article className="card plan" dir={dirOf(lang)} lang={langAttr(lang)}>
@@ -139,7 +194,7 @@ export function PlanCard({
                   onClick={() => setOpen(isOpen ? null : i)}
                 >
                   <span className="step-n" aria-hidden="true">
-                    {isDone ? "✓" : i + 1}
+                    {isDone ? <Tick /> : i + 1}
                   </span>
                   <span className="step__title">{s.title}</span>
                   <svg className="chev" viewBox="0 0 12 12" aria-hidden="true">
@@ -234,41 +289,48 @@ export function PlanCard({
           {t("checkIn", lang)} · {plan.checkIn.whenLabel}
         </p>
         <p className="question">{plan.checkIn.question}</p>
-        <div className="row">
-          {reminded ? (
-            <>
-              <span className="saved" role="status">
-                ✓ {t("saved", lang)} {plan.checkIn.whenLabel}
-              </span>
-              <button type="button" className="btn btn--secondary" onClick={onCalendar}>
-                {t("addCal", lang)}
+        {answering ? (
+          <CheckInAnswers lang={lang} steps={plan.steps.map((st) => st.title)} onAnswer={onAnswer} />
+        ) : (
+          <div className="row">
+            {reminded ? (
+              <>
+                <span className="saved" role="status">
+                  <Tick /> {t("saved", lang)} {plan.checkIn.whenLabel}
+                </span>
+                <button type="button" className="btn btn--secondary" onClick={onCalendar}>
+                  {t("addCal", lang)}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn--secondary" onClick={onRemind}>
+                {t("remindMe", lang)}
               </button>
-            </>
-          ) : (
-            <button type="button" className="btn btn--secondary" onClick={onRemind}>
-              {t("remindMe", lang)}
+            )}
+            <button type="button" className="btn btn--secondary" onClick={() => setAnswering(true)}>
+              {t("answerNow", lang)}
             </button>
-          )}
-          <button type="button" className="btn btn--secondary" onClick={onAnswerNow}>
-            {t("answerNow", lang)}
-          </button>
-        </div>
+          </div>
+        )}
       </section>
       <div className="plan__foot">
-        <button type="button" className="link" onClick={async () => setCopied((await onShare()) === "copied")}>
+        <button type="button" className="quiet" onClick={async () => { const r = await onShare(); setShared(r === "shared" ? null : r); }}>
+          <svg className="quiet__icon" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8 10V2.5M5 5l3-2.5L11 5M3 9.5v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3" />
+          </svg>
           {t("share", lang)}
         </button>
-        {copied && (
-          <span className="eyebrow" role="status">
-            {t("copied", lang)}
+        {shared && (
+          <span className="plan__status" role="status">
+            {t(shared === "copied" ? "copied" : "shareFailed", lang)}
           </span>
         )}
-        {support && (
-          <button type="button" className="link" onClick={onHelp}>
-            {t("supportStrip", lang)}
-          </button>
-        )}
       </div>
+      {support && (
+        <button type="button" className="link plan__support" onClick={onHelp}>
+          {t("supportStrip", lang)}
+        </button>
+      )}
     </article>
   );
 }
@@ -314,8 +376,6 @@ export function NoteCard({ kind, lang }: { kind: "fallback" | "redirect"; lang: 
 /** The check-in when it comes due: three taps, then (if it did not go well) which step. */
 export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answer: string, label: string) => void }) {
   const { lang } = c;
-  const [how, setHow] = useState<string | null>(null);
-  const steps = c.steps ?? [];
   return (
     <article className="card due" dir={dirOf(lang)} lang={langAttr(lang)}>
       <p className="eyebrow">{t("checkIn", lang)}</p>
@@ -323,36 +383,7 @@ export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answe
         {t("youWereTrying", lang)} <strong>{c.trying}</strong>
       </p>
       <p className="question">{c.question}</p>
-      {how === null ? (
-        <div className="row">
-          {(["better", "same", "harder"] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              className="opt"
-              onClick={() => (k === "better" || steps.length < 2 ? onAnswer(t(k, lang), t(k, lang)) : setHow(t(k, lang)))}
-            >
-              {t(k, lang)}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <>
-          <p className="eyebrow">{t("whichStep", lang)}</p>
-          <div className="row">
-            {[...steps, t("allSteps", lang)].map((s) => (
-              <button
-                key={s}
-                type="button"
-                className="opt"
-                onClick={() => onAnswer(`${how}. ${t("whichStep", lang)} ${s}.`, `${how} · ${s}`)}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
+      <CheckInAnswers lang={lang} steps={c.steps ?? []} onAnswer={onAnswer} />
     </article>
   );
 }

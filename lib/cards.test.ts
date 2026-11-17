@@ -31,12 +31,12 @@ test("validateStep keeps exact words and the reason; say may be null", () => {
   expect(validateStep({ ...step, say: "x".repeat(241) })).toBeNull();
 });
 
-test("validatePlan accepts a timeline of 2–5 rows or none", () => {
+test("validatePlan keeps a timeline of 2–5 rows and drops a malformed one without losing the plan", () => {
   expect(validatePlan(plan)).toEqual(plan);
   expect(validatePlan({ ...plan, timeline: null })?.timeline).toBeNull();
   expect(validatePlan({ ...plan, timeline: [] })?.timeline).toBeNull();
-  expect(validatePlan({ ...plan, timeline: Array(6).fill({ time: "7", what: "x" }) })).toBeNull();
-  expect(validatePlan({ ...plan, timeline: [{ time: "7:30" }, { time: "8", what: "x" }] })).toBeNull();
+  expect(validatePlan({ ...plan, timeline: Array(6).fill({ time: "7", what: "x" }) })).toEqual({ ...plan, timeline: null });
+  expect(validatePlan({ ...plan, timeline: [{ time: "7:30" }, { time: "8", what: "x" }] })?.timeline).toBeNull();
 });
 
 test("validateAsk needs 1–2 questions with 2–4 short options each", () => {

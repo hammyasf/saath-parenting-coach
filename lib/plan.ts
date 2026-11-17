@@ -21,10 +21,10 @@ export function validateStep(v: unknown): Step | null {
   return { title, how, say: words, why };
 }
 
-function validateTimeline(v: unknown): Plan["timeline"] | undefined {
-  if (v == null || (Array.isArray(v) && v.length === 0)) return null;
-  if (!Array.isArray(v) || v.length < 2 || v.length > 5) return undefined;
-  if (!v.every((r) => r && text(r.time, 20) && text(r.what, TITLE_MAX))) return undefined;
+/** The timeline is an extra: a malformed one is dropped, it does not cost the parent the whole plan. */
+function validateTimeline(v: unknown): Plan["timeline"] {
+  if (!Array.isArray(v) || v.length < 2 || v.length > 5) return null;
+  if (!v.every((r) => r && text(r.time, 20) && text(r.what, TITLE_MAX))) return null;
   return v.map(({ time, what }) => ({ time, what }));
 }
 
@@ -36,7 +36,6 @@ export function validatePlan(v: unknown): Plan | null {
   const checked = steps.map(validateStep);
   if (checked.some((s) => !s)) return null;
   const timeline = validateTimeline((v as Plan).timeline);
-  if (timeline === undefined) return null;
   if (!checkIn || !text(checkIn.question) || !text(checkIn.whenLabel, TITLE_MAX)) return null;
   const hours = Number(checkIn.afterHours);
   if (!Number.isFinite(hours) || hours < 1 || hours > 168) return null;

@@ -236,10 +236,10 @@ export async function runCoach(input: CoachInput): Promise<CoachReply | null> {
   const ai = client;
   const models = [
     process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
-    ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.1-flash-lite,gemini-3.5-flash-lite,gemini-3.8-flash").split(","),
+    ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.1-flash-lite,gemini-3.8-flash").split(","),
   ];
   const schema = input.mode === "swap" ? stepSchema : input.allowAsk ? askOrPlanSchema : planSchema;
-  const text = await tryModels(models, async (model) => {
+  return tryModels(models, async (model) => {
     const interaction = await ai.interactions.create(
       {
         model,
@@ -250,10 +250,9 @@ export async function runCoach(input: CoachInput): Promise<CoachReply | null> {
       },
       { timeout: TIMEOUT_MS, maxRetries: 0 },
     );
-    return interaction.output_text ?? "";
+    // A reply in the wrong shape is this model's failure, not the parent's: let the next model try.
+    const reply = parseReply(interaction.output_text ?? "", input.mode, input.allowAsk);
+    if (!reply) throw Object.assign(new Error("bad shape"), { name: "reply did not match the expected shape" });
+    return reply;
   });
-  if (text === null) return null;
-  const reply = parseReply(text, input.mode, input.allowAsk);
-  if (!reply) console.warn("coach: reply did not match the expected shape");
-  return reply;
 }

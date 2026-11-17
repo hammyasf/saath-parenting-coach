@@ -39,6 +39,7 @@ const S = {
   allSteps: { en: "All of them", ur: "سب", "roman-ur": "Sab" },
   share: { en: "Share this plan", ur: "یہ پلان شیئر کریں", "roman-ur": "Yeh plan share karein" },
   copied: { en: "Copied. Paste it anywhere.", ur: "کاپی ہو گیا۔ کہیں بھی پیسٹ کریں۔", "roman-ur": "Copy ho gaya. Kahin bhi paste karein." },
+  shareFailed: { en: "Could not share from this browser.", ur: "اس براؤزر سے شیئر نہیں ہو سکا۔", "roman-ur": "Is browser se share nahi ho saka." },
   addCal: { en: "Add to calendar", ur: "کیلنڈر میں شامل کریں", "roman-ur": "Calendar mein shamil karein" },
   fieldLabel: {
     en: "Your concern",
