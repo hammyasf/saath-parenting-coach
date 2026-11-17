@@ -83,6 +83,8 @@ const S = {
     ur: "لگتا ہے آپ یا آپ کا بچہ خود کو نقصان پہنچانے کا سوچ رہا ہے۔ براہِ کرم ابھی کسی سے مدد لیں۔",
     "roman-ur": "Lagta hai aap ya aap ka bacha khud ko nuqsan pohanchanay ka soch raha hai. Aap ko abhi kisi insaan ki madad milni chahiye. Meharbani kar ke rabta karein.",
   },
+  inUae: { en: "In the UAE", ur: "متحدہ عرب امارات میں", "roman-ur": "UAE mein" },
+  elsewhere: { en: "In another country?", ur: "کسی اور ملک میں؟", "roman-ur": "Kisi aur mulk mein?" },
   crisisGeneric: {
     en: "Call your local emergency number or go to the nearest hospital emergency department.",
     ur: "اپنے مقامی ایمرجنسی نمبر پر کال کریں یا قریبی ہسپتال کی ایمرجنسی جائیں۔",

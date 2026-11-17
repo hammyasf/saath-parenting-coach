@@ -29,7 +29,7 @@ parent message
 1. GATE      Jev returns probabilities: danger, abuse, self-harm, medical ask,
    │         legal ask, off-topic, plus language and script
    │
-   ├─ crisis ──────────► help panel: call local emergency, find a helpline. No coach.
+   ├─ crisis ──────────► help panel: numbers to call, helplines elsewhere. No coach.
    │
 2. COACH     Gemini writes the plan as fixed-shape JSON (1–3 steps, check-in)
    │
@@ -116,7 +116,7 @@ The safety decision is right on all 25, with no crisis missed and no threshold t
 
 - Urdu-script copy and test cases were written by a model and checked by back-translation, not reviewed by a native reader.
 - The request cap is in memory, per server instance.
-- The crisis panel names no country's phone numbers. The brief does not say where parents are, and a wrong local number is worse than none, so the panel says "call your local emergency number or go to the nearest hospital" and links to three directories that list helplines by country (`lib/helplines.ts`). With a known market, verified local numbers go in that one file.
+- The brief names no country. The crisis panel assumes the UAE first, because the team is in Dubai, and shows 999 and the child protection line 116111; both were read on an official Abu Dhabi Police page on 17 Nov 2026 (sources in `lib/helplines.ts`). Under them, for a parent in another country: "call your local emergency number" and links to three directories of helplines by country. No UAE mental-health line could be confirmed on an official page, so self-harm shows 999 and "go to the nearest hospital".
 - This is a demo, not a medical or emergency service.
 
 ## Privacy

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { helplinesFor, type Helpline } from "@/lib/helplines";
+import { directoriesFor, phonesFor } from "@/lib/helplines";
 import { dirOf, langAttr, t } from "@/lib/strings";
 import type { SavedCheckIn } from "@/lib/checkin";
 import type { Ask, CrisisCategory, Lang, Plan } from "@/lib/types";
@@ -7,20 +7,33 @@ import type { Ask, CrisisCategory, Lang, Plan } from "@/lib/types";
 const CATEGORIES: CrisisCategory[] = ["danger", "abuse", "self-harm"];
 const REASONS = ["reasonHard", "reasonTried", "reasonFit"] as const;
 
-/** The local emergency number first, then directories that list helplines by country. */
-function Helplines({ lines, lang }: { lines: Helpline[]; lang: Lang }) {
+/** UAE numbers to tap first; below them, the way out for a parent in another country. */
+function Helplines({ categories, lang }: { categories: CrisisCategory[]; lang: Lang }) {
+  const unique = <T,>(items: T[], key: (item: T) => string) => [...new Map(items.map((i) => [key(i), i])).values()];
+  const phones = unique(categories.flatMap(phonesFor), (p) => p.number);
+  const directories = unique(categories.flatMap(directoriesFor), (d) => d.url);
   return (
     <>
-      <p className="generic">{t("crisisGeneric", lang)}</p>
+      <p className="eyebrow help__label">{t("inUae", lang)}</p>
       <ul className="helplines">
-        {lines.map((h) => (
-          <li key={h.url}>
-            <a className="call" href={h.url} target="_blank" rel="noreferrer" dir="ltr" lang="en">
-              <span className="call-text">
-                <span className="call-label">{h.label}</span>
-                <span className="call-detail">{h.detail}</span>
-              </span>
-              <svg className="call-arrow" viewBox="0 0 16 16" aria-hidden="true">
+        {phones.map((h) => (
+          <li key={h.number}>
+            <a className="call" href={`tel:${h.number}`} dir="ltr" lang="en">
+              <span className="call-number">{h.number}</span>
+              <span className="call-label">{h.label}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="eyebrow help__label">{t("elsewhere", lang)}</p>
+      <p className="generic">{t("crisisGeneric", lang)}</p>
+      <ul className="directories">
+        {directories.map((d) => (
+          <li key={d.url}>
+            <a className="dir" href={d.url} target="_blank" rel="noreferrer" dir="ltr" lang="en">
+              {d.label}
+              <span className="dir__by">{d.detail}</span>
+              <svg className="dir__arrow" viewBox="0 0 16 16" aria-hidden="true">
                 <path d="M5 11 11 5M6 5h5v5" />
               </svg>
             </a>
@@ -344,7 +357,7 @@ export function CrisisPanel({ category, lang }: { category: CrisisCategory; lang
     <article className="card crisis" dir={dirOf(lang)} lang={langAttr(lang)}>
       <h3>{t("crisisTitle", lang)}</h3>
       <p>{t(`crisis_${category}`, lang)}</p>
-      <Helplines lines={helplinesFor(category)} lang={lang} />
+      <Helplines categories={[category]} lang={lang} />
       <p className="after">{t("crisisAfter", lang)}</p>
     </article>
   );
@@ -352,8 +365,6 @@ export function CrisisPanel({ category, lang }: { category: CrisisCategory; lang
 
 /** Every directory, opened from "Get help now" or the support strip. */
 export function HelpBox({ lang, onClose }: { lang: Lang; onClose: () => void }) {
-  const seen = new Set<string>();
-  const lines = CATEGORIES.flatMap((c) => helplinesFor(c)).filter((h) => !seen.has(h.url) && seen.add(h.url));
   return (
     <section className="card crisis helpbox" dir={dirOf(lang)} lang={langAttr(lang)} aria-label={t("getHelpNow", lang)}>
       <div className="row between">
@@ -362,7 +373,7 @@ export function HelpBox({ lang, onClose }: { lang: Lang; onClose: () => void }) 
           ×
         </button>
       </div>
-      <Helplines lines={lines} lang={lang} />
+      <Helplines categories={CATEGORIES} lang={lang} />
     </section>
   );
 }
