@@ -44,7 +44,7 @@ Why two models with separate jobs:
 - The model that writes the reply never decides whether replying is safe.
 - The gate returns numbers, so the thresholds live in code (`lib/decide.ts`), can be read in one screen, and are tested without a network.
 - An uncertain crisis signal counts as a crisis. If the gate or the check is down, no coach reply goes out.
-- The coach sits behind one function (`lib/coach.ts`), so the model can be swapped. It tries `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, then both again, then `gemini-3.8-flash`, each with an 8 second limit. The order was set by measuring: on the free tier the larger model returned "high demand" errors on most calls while the lighter ones answered in one to two seconds. A refused request is not retried.
+- The coach sits behind one function (`lib/coach.ts`), so the model can be swapped. It tries `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, then the first again, then `gemini-3.8-flash`, each with an 8 second limit. The order was set by measuring: on the free tier the larger model returned "high demand" errors on most calls while the lighter ones answered in one to two seconds. A refused request is not retried.
 
 Two product decisions worth knowing:
 
