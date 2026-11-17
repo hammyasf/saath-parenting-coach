@@ -119,7 +119,6 @@ const S = {
     ur: "یہ گفتگو صرف آپ کے براؤزر میں رہتی ہے۔",
     "roman-ur": "Yeh guftagu sirf aap ke browser mein rehti hai.",
   },
-  regionLabel: { en: "Helplines for", ur: "ہیلپ لائن:", "roman-ur": "Helpline:" },
   skipDemo: {
     en: "Demo: skip to check-in time",
     ur: "Demo: skip to check-in time",

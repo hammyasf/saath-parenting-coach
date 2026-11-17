@@ -13,30 +13,13 @@ import {
   saveItems,
   type SavedCheckIn,
 } from "@/lib/checkin";
-import type { Region } from "@/lib/helplines";
 import { isItem, newId, toTurns, type Item } from "@/lib/items";
 import { MAX_TEXT } from "@/lib/request";
 import { checkInIcs, planToText } from "@/lib/share";
 import { STARTERS, dirOf, langAttr, t } from "@/lib/strings";
 import type { CoachResponse, Lang, Plan } from "@/lib/types";
 
-const REGIONS: { value: Region; label: string }[] = [
-  { value: "pk", label: "Pakistan" },
-  { value: "ae", label: "UAE" },
-  { value: "other", label: "Other" },
-];
-
 const store = () => safeStore(() => window.localStorage);
-
-/** A first guess at which helplines to show, from the device's time zone. The parent can change it. */
-function guessRegion(): Region {
-  try {
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    return tz === "Asia/Karachi" ? "pk" : tz === "Asia/Dubai" ? "ae" : "other";
-  } catch {
-    return "other";
-  }
-}
 
 /** What a screen reader hears when a reply arrives: the gist, once. */
 function announce(r: CoachResponse): string {
@@ -54,7 +37,6 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
   const [ui, setUi] = useState<Lang>("en");
-  const [region, setRegion] = useState<Region>("other");
   const [due, setDue] = useState<SavedCheckIn | null>(null);
   const [reminded, setReminded] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -76,8 +58,6 @@ export default function Chat() {
     setDue(dueCheckIn(store(), Date.now()));
     setReminded(peekCheckIn(store())?.planId ?? null);
     setDemo(new URLSearchParams(window.location.search).has("demo"));
-    const r = store().getItem("saath.region");
-    setRegion(r === "pk" || r === "ae" || r === "other" ? r : guessRegion());
     setLoaded(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -295,11 +275,6 @@ export default function Chat() {
     box.current?.focus();
   }
 
-  function pickRegion(r: Region) {
-    setRegion(r);
-    store().setItem("saath.region", r);
-  }
-
   const active = loaded && (items.length > 0 || due !== null);
 
   const composer = (
@@ -375,16 +350,6 @@ export default function Chat() {
                 اردو
               </button>
             </div>
-            <label className="region">
-              <span className="sr-only">{t("regionLabel", "en")}</span>
-              <select value={region} onChange={(e) => pickRegion(e.target.value as Region)}>
-                {REGIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </label>
             {active && (
               <button type="button" className="link reset" onClick={reset} disabled={pending} aria-label={t("reset", ui)}>
                 <span className="reset__text">{t("reset", ui)}</span>
@@ -404,7 +369,7 @@ export default function Chat() {
               {(hadCrisis || showHelp) && (
                 <div className="wrap wrap--narrow pinned">
                   {showHelp ? (
-                    <HelpBox lang={ui} region={region} onClose={() => setShowHelp(false)} />
+                    <HelpBox lang={ui} onClose={() => setShowHelp(false)} />
                   ) : (
                     <button type="button" className="btn btn--secondary" onClick={() => setShowHelp(true)}>
                       {t("getHelpNow", ui)}
@@ -451,7 +416,7 @@ export default function Chat() {
                       onAnswer={(a, label) => answerAsk(it.id, a, label)}
                     />
                   ) : it.response.kind === "crisis" ? (
-                    <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} region={region} />
+                    <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} />
                   ) : it.response.kind === "step" ? null : (
                     <NoteCard key={it.id} kind={it.response.kind} lang={it.response.lang} />
                   ),
