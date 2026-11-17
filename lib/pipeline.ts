@@ -1,8 +1,8 @@
 import { checkReply } from "./replyCheck";
 import { runCoach } from "./coach";
-import { decide, replyFails } from "./decide";
+import { decide, gateWindow, replyFails } from "./decide";
 import { runGate } from "./gate";
-import type { CoachResponse, GateResult, Turn } from "./types";
+import type { CoachResponse, GateResult, Mode, Turn } from "./types";
 
 export type Deps = { gate: typeof runGate; coach: typeof runCoach; check: typeof checkReply };
 
@@ -11,11 +11,14 @@ const PROBABILITIES = ["danger", "abuse", "selfHarm", "parentStruggle", "medical
 
 const real: Deps = { gate: runGate, coach: runCoach, check: checkReply };
 
+/** The coach may ask only at the start: once it has asked or advised, it works with what it knows. */
+const alreadySpoke = (turns: Turn[]) => gateWindow(turns).some((t) => t.role === "coach");
+
 /**
  * Gate → decision → coach → reply check. Never throws.
  * Nothing the coach writes reaches the parent unless both the gate and the reply check ran.
  */
-export async function respond(turns: Turn[], deps: Deps = real): Promise<CoachResponse> {
+export async function respond(turns: Turn[], deps: Deps = real, mode: Mode = "reply"): Promise<CoachResponse> {
   let g: GateResult;
   try {
     g = await deps.gate(turns);
@@ -31,19 +34,29 @@ export async function respond(turns: Turn[], deps: Deps = real): Promise<CoachRe
   if (d.route === "crisis") return { kind: "crisis", lang, category: d.category };
   if (d.route === "redirect") return { kind: "redirect", lang };
 
+  // No questions for a parent in a hard moment, or one who asked for something we decline: answer them.
+  const allowAsk = mode === "reply" && !d.decline && !d.support && !alreadySpoke(turns);
   try {
     let failedRule: ReturnType<typeof replyFails> = null;
     for (let attempt = 0; attempt < 2; attempt++) {
-      const plan = await deps.coach({
+      const reply = await deps.coach({
         turns,
         lang,
+        mode,
+        allowAsk,
         decline: d.decline,
         support: d.support,
         ...(failedRule && { failedRule }),
       });
-      if (!plan) break;
-      failedRule = replyFails(await deps.check(plan));
-      if (!failedRule) return { kind: "plan", lang, plan, support: d.support };
+      if (!reply) break;
+      // The coach must answer in the shape this turn calls for.
+      if (mode === "swap" ? reply.kind !== "step" : reply.kind === "step" || (reply.kind === "ask" && !allowAsk)) break;
+      const content = reply.kind === "ask" ? reply.ask : reply.kind === "plan" ? reply.plan : reply.step;
+      failedRule = replyFails(await deps.check(content));
+      if (failedRule) continue;
+      if (reply.kind === "plan") return { kind: "plan", lang, plan: reply.plan, support: d.support };
+      if (reply.kind === "ask") return { kind: "ask", lang, ask: reply.ask };
+      return { kind: "step", lang, step: reply.step };
     }
   } catch {
     // coach or reply check unavailable: fall through to the safe card

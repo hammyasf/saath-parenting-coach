@@ -4,9 +4,9 @@ import { allow, parseBody } from "./request";
 
 const parent = (text: string) => ({ role: "parent", text });
 
-test("allow: 20 per 10 minutes per ip, then resets", () => {
+test("allow: 30 per 10 minutes per ip, then resets", () => {
   const t0 = 1_000_000;
-  for (let i = 0; i < 20; i++) expect(allow("1.1.1.1", t0)).toBe(true);
+  for (let i = 0; i < 30; i++) expect(allow("1.1.1.1", t0)).toBe(true);
   expect(allow("1.1.1.1", t0)).toBe(false);
   expect(allow("2.2.2.2", t0)).toBe(true);
   expect(allow("1.1.1.1", t0 + 10 * 60_000)).toBe(true);
@@ -32,10 +32,11 @@ test.each([
 
 const plan = {
   acknowledge: "a",
-  steps: [{ title: "t", how: "h" }],
+  steps: [{ title: "t", how: "h", say: null, why: "y" }],
   watchFor: "w",
   checkIn: { question: "q", whenLabel: "tomorrow", afterHours: 24 },
   declined: null,
+  timeline: null,
 };
 
 test("parsePlan accepts a well-formed plan and drops extra fields", () =>
@@ -46,7 +47,7 @@ test.each([
   ["empty", ""],
   ["no steps", JSON.stringify({ ...plan, steps: [] })],
   ["four steps", JSON.stringify({ ...plan, steps: Array(4).fill(plan.steps[0]) })],
-  ["blank title", JSON.stringify({ ...plan, steps: [{ title: " ", how: "h" }] })],
+  ["blank title", JSON.stringify({ ...plan, steps: [{ title: " ", how: "h", say: null, why: "y" }] })],
   ["zero hours", JSON.stringify({ ...plan, checkIn: { ...plan.checkIn, afterHours: 0 } })],
   ["bad declined kind", JSON.stringify({ ...plan, declined: { kind: "other", pointer: "p" } })],
 ])("parsePlan rejects %s", (_name, text) => expect(parsePlan(text)).toBeNull());

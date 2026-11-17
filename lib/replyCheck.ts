@@ -1,11 +1,11 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
-import type { Plan, ReplyCheck } from "./types";
+import type { Ask, Plan, ReplyCheck, Step } from "./types";
 
 const noul = (instructions: string, yes: string, no: string) =>
   ({ type: "noul", instructions, criteria: { true: yes, false: no } }) as const;
 
 const CONTEXT =
-  "The state is a parenting coach's reply to a parent, as JSON. It may be in English, Urdu script, or Roman Urdu.";
+  "The state is something a parenting coach wrote to a parent, as JSON: a plan, a single step, or questions with answer options. It may be in English, Urdu script, or Roman Urdu.";
 
 const questions = {
   diagnosis: noul(
@@ -27,9 +27,9 @@ const questions = {
 
 let client: TypeSafeClient | undefined;
 
-/** Ask Jev whether the coach's plan broke a rule. Throws if the service fails. */
-export async function checkReply(plan: Plan): Promise<ReplyCheck> {
+/** Ask Jev whether what the coach wrote broke a rule. Throws if the service fails. */
+export async function checkReply(content: Plan | Ask | Step): Promise<ReplyCheck> {
   client ??= new TypeSafeClient();
-  const { answers: a } = await client.systemOne({ state: plan, questions });
+  const { answers: a } = await client.systemOne({ state: content, questions });
   return { diagnosis: a.diagnosis.noul, medical: a.medical.noul, legal: a.legal.noul };
 }

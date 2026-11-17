@@ -4,7 +4,15 @@ import type { Lang } from "./types";
 // Storage can be missing, full, or corrupt; none of that may break the page.
 
 export type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-export type SavedCheckIn = { question: string; whenLabel: string; trying: string; lang: Lang; dueAt: number };
+export type SavedCheckIn = {
+  question: string;
+  whenLabel: string;
+  trying: string;
+  /** Titles of the plan's steps, so the check-in can ask which one did not hold. */
+  steps?: string[];
+  lang: Lang;
+  dueAt: number;
+};
 
 const NO_STORE: Store = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
@@ -47,7 +55,8 @@ export function peekCheckIn(s: Store): SavedCheckIn | null {
     str(c.whenLabel) &&
     str(c.trying) &&
     ["en", "ur", "roman-ur"].includes(c.lang) &&
-    Number.isFinite(c.dueAt)
+    Number.isFinite(c.dueAt) &&
+    (c.steps === undefined || (Array.isArray(c.steps) && c.steps.every(str)))
     ? c
     : null;
 }

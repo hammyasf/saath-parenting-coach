@@ -1,11 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { gateWindow } from "./decide";
-import { validatePlan } from "./plan";
-import type { Lang, Plan, ReplyCheck, Turn } from "./types";
+import { validateAsk, validatePlan, validateStep } from "./plan";
+import type { CoachReply, Lang, Mode, Plan, ReplyCheck, Turn } from "./types";
 
 export type CoachInput = {
   turns: Turn[];
   lang: Lang;
+  mode: Mode;
+  /** False once the coach has asked its questions, when declining, and in swap mode. */
+  allowAsk: boolean;
   decline: "medical" | "legal" | null;
   support: boolean;
   failedRule?: keyof ReplyCheck;
@@ -17,33 +20,67 @@ const LANGUAGE: Record<Lang, string> = {
   "roman-ur": "Roman Urdu (Urdu written in Latin letters, the way people type it on WhatsApp)",
 };
 
-const RULES = `You are a calm, practical parenting coach. A parent has written to you. Reply with a short plan they can act on today.
+const RULES = `You are a parenting coach. A parent is writing to you on their phone, often tired and in the middle of it. Your reply is shown as a card they act on tonight, not as chat text.
 
-Hard rules:
+Hard rules, never broken:
 - Never name a diagnosis or disorder for the child, and never say the child "has" or "may have" a condition.
 - Never recommend a medicine, supplement, dose, or a decision about treatment.
 - Never say what the law requires or what legal action to take.
 - If something needs a professional, say "talk to your child's doctor" (or a lawyer) and stop there.
 
-Style:
-- acknowledge: one warm sentence showing you heard them. No praise, no lecture.
-- steps: one to three. Each title starts with a verb and is under six words. Each "how" is one or two short sentences a tired parent can follow.
-- watchFor: one sentence on what would mean this needs a professional.
-- checkIn: one specific question to answer later about whether the plan worked, a plain label for when (such as "tomorrow evening"), and afterHours as the number of hours until then.
-- Plain everyday words. No jargon. No emojis.`;
+What makes a reply worth reading:
+- It is about THIS child. Use the child's age and every detail the parent gave, including their answers to your questions. If a step would fit any child of any age, it is too vague: write a sharper one.
+- Every step carries something exact: a time, a number, a place, or the words to say. "Set a routine" is not a step. "Lights out at 8:00, after bath then one book" is.
+- If the parent reports that a step did not hold, do not hand it back in other words. Change the approach, and let the acknowledge line say what you are changing.
+- Plain everyday words. No jargon, no emojis, no praise, no lecture.`;
 
-const schema = {
+const PLAN_GUIDE = `How to fill a plan:
+- acknowledge: one sentence that reflects back only what the parent told you. Do not tell them how they feel unless they said it.
+- steps: one to three, in the order to do them. Each:
+  - title: under six words, starts with a verb.
+  - how: one or two short sentences with the exact thing to do.
+  - say: the exact words the parent says to the child, simple enough for the child's age, with no quotation marks. Use null when the step is not about speaking.
+  - why: one sentence on why this works for a child this age.
+- timeline: only when the concern runs on a clock (bedtime, mornings, mealtimes, homework). Three to five rows, each a time and a short action, built around any time the parent mentioned. Otherwise null.
+- watchFor: one specific sign, for this concern, that means a professional should look.
+- checkIn: a question about the first step that the parent can answer tomorrow with "better", "same" or "harder"; a plain label for when (such as "tomorrow evening"); and afterHours as the number of hours until then.`;
+
+const ASK_GUIDE = `Ask before you advise, when you would otherwise be guessing:
+- If you do not know the one or two facts that would change the plan (what exactly happens, when it happens, how long it has gone on, what they already tried), reply with type "ask" and leave plan null.
+- intro: a short line such as "Two quick things, so I don't guess:".
+- One or two questions. Each has two to four options the parent taps. An option is something a parent would say, under six words.
+- Do not ask for anything the parent already told you.
+- If the parent gave enough detail, or is answering a check-in, reply with type "plan" and leave ask null.`;
+
+const SWAP_GUIDE = `The parent says one step of the plan you gave will not work for them, and why. Write exactly one replacement step that goes after the same problem a different way and respects their reason. Do not repeat the title of any step already in the plan. Fill title, how, say and why as described:
+- title: under six words, starts with a verb.
+- how: one or two short sentences with the exact thing to do.
+- say: the exact words to say to the child, with no quotation marks, or null.
+- why: one sentence on why this works for a child this age.`;
+
+const stepSchema = {
+  type: "object",
+  properties: {
+    title: { type: "string" },
+    how: { type: "string" },
+    say: { type: ["string", "null"] },
+    why: { type: "string" },
+  },
+  required: ["title", "how", "say", "why"],
+};
+
+const planSchema = {
   type: "object",
   properties: {
     acknowledge: { type: "string" },
-    steps: {
-      type: "array",
-      minItems: 1,
-      maxItems: 3,
+    steps: { type: "array", minItems: 1, maxItems: 3, items: stepSchema },
+    timeline: {
+      type: ["array", "null"],
+      maxItems: 5,
       items: {
         type: "object",
-        properties: { title: { type: "string" }, how: { type: "string" } },
-        required: ["title", "how"],
+        properties: { time: { type: "string" }, what: { type: "string" } },
+        required: ["time", "what"],
       },
     },
     watchFor: { type: "string" },
@@ -62,7 +99,38 @@ const schema = {
       required: ["kind", "pointer"],
     },
   },
-  required: ["acknowledge", "steps", "watchFor", "checkIn", "declined"],
+  required: ["acknowledge", "steps", "timeline", "watchFor", "checkIn", "declined"],
+};
+
+const askSchema = {
+  type: "object",
+  properties: {
+    intro: { type: "string" },
+    questions: {
+      type: "array",
+      minItems: 1,
+      maxItems: 2,
+      items: {
+        type: "object",
+        properties: {
+          q: { type: "string" },
+          options: { type: "array", minItems: 2, maxItems: 4, items: { type: "string" } },
+        },
+        required: ["q", "options"],
+      },
+    },
+  },
+  required: ["intro", "questions"],
+};
+
+const askOrPlanSchema = {
+  type: "object",
+  properties: {
+    type: { type: "string", enum: ["ask", "plan"] },
+    ask: { ...askSchema, type: ["object", "null"] },
+    plan: { ...planSchema, type: ["object", "null"] },
+  },
+  required: ["type", "ask", "plan"],
 };
 
 const FAILED: Record<keyof ReplyCheck, string> = {
@@ -71,28 +139,57 @@ const FAILED: Record<keyof ReplyCheck, string> = {
   legal: "gave a legal instruction",
 };
 
-function instructions({ lang, decline, support, failedRule }: CoachInput): string {
-  const parts = [RULES, `Write every field in ${LANGUAGE[lang]}, the same language and script the parent used.`];
-  parts.push(
-    decline
-      ? `The parent asked for a ${decline} instruction. Do not give it. Set "declined" to kind "${decline}" with a one-sentence pointer to ${decline === "medical" ? "their child's doctor" : "a lawyer"}, then help with the parenting side of the concern.`
-      : `Set "declined" to null.`,
-  );
+function instructions({ lang, mode, allowAsk, decline, support, failedRule }: CoachInput): string {
+  const parts = [RULES];
+  if (mode === "swap") parts.push(SWAP_GUIDE);
+  else {
+    if (allowAsk) parts.push(ASK_GUIDE);
+    else parts.push("Give the plan now. Do not ask questions: work with what the parent has told you.");
+    parts.push(PLAN_GUIDE);
+    parts.push(
+      decline
+        ? `The parent asked for a ${decline} instruction. Do not give it. Set "declined" to kind "${decline}" with a one-sentence pointer to ${decline === "medical" ? "their child's doctor" : "a lawyer"}, then help with the parenting side of the concern: what the child needs from this parent tonight. Keep every step about the child, not about the other adult, the dispute, or what to document.`
+        : `Set "declined" to null.`,
+    );
+  }
   if (support)
     parts.push(
       "The parent is describing their own harsh moment or a fear of losing control. Do not judge them. Aim the steps at the parent's own calm-down in the moment and at repairing things with the child.",
     );
-  if (failedRule)
-    parts.push(`Your previous draft ${FAILED[failedRule]}. Write it again without doing that.`);
+  parts.push(`Write every field in ${LANGUAGE[lang]}, the same language and script the parent used.`);
+  if (failedRule) parts.push(`Your previous draft ${FAILED[failedRule]}. Write it again without doing that.`);
   return parts.join("\n\n");
 }
 
-export function parsePlan(text: string): Plan | null {
+function parseJson(text: string): unknown {
   try {
-    return validatePlan(JSON.parse(text));
+    return JSON.parse(text);
   } catch {
     return null;
   }
+}
+
+/** Validate a plan the model wrote; the schema is a request, not a guarantee. */
+export const parsePlan = (text: string): Plan | null => validatePlan(parseJson(text));
+
+/** Turn the model's text into a reply of the shape this turn allows, or null. */
+export function parseReply(text: string, mode: Mode, allowAsk: boolean): CoachReply | null {
+  const v = parseJson(text) as { type?: string; ask?: unknown; plan?: unknown } | null;
+  if (!v || typeof v !== "object") return null;
+  if (mode === "swap") {
+    const step = validateStep(v);
+    return step && { kind: "step", step };
+  }
+  if (!allowAsk) {
+    const plan = validatePlan(v);
+    return plan && { kind: "plan", plan };
+  }
+  if (v.type === "ask") {
+    const ask = validateAsk(v.ask);
+    return ask && { kind: "ask", ask };
+  }
+  const plan = validatePlan(v.plan);
+  return plan && { kind: "plan", plan };
 }
 
 /**
@@ -124,21 +221,22 @@ export async function tryModels<T>(models: string[], call: (model: string) => Pr
   return null;
 }
 
-const TIMEOUT_MS = 7_000;
+const TIMEOUT_MS = 9_000;
 
 let client: GoogleGenAI | undefined;
 
 /**
- * Ask Gemini for a plan. Returns null when the reply is blocked by Gemini's own
+ * Ask Gemini for the next card. Returns null when the reply is blocked by Gemini's own
  * safety filter, empty, malformed, or the service fails: the caller shows the safe card.
  */
-export async function runCoach(input: CoachInput): Promise<Plan | null> {
+export async function runCoach(input: CoachInput): Promise<CoachReply | null> {
   client ??= new GoogleGenAI({});
   const ai = client;
   const models = [
     process.env.GEMINI_MODEL || "gemini-3.8-flash",
     ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(","),
   ];
+  const schema = input.mode === "swap" ? stepSchema : input.allowAsk ? askOrPlanSchema : planSchema;
   const text = await tryModels(models, async (model) => {
     const interaction = await ai.interactions.create(
       {
@@ -153,7 +251,7 @@ export async function runCoach(input: CoachInput): Promise<Plan | null> {
     return interaction.output_text ?? "";
   });
   if (text === null) return null;
-  const plan = parsePlan(text);
-  if (!plan) console.warn("coach: reply did not match the plan shape");
-  return plan;
+  const reply = parseReply(text, input.mode, input.allowAsk);
+  if (!reply) console.warn("coach: reply did not match the expected shape");
+  return reply;
 }

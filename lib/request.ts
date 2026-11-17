@@ -1,4 +1,4 @@
-import type { Turn } from "./types";
+import type { Mode, Turn } from "./types";
 
 export const MAX_TURNS = 20;
 export const MAX_TEXT = 2000;
@@ -17,7 +17,12 @@ export function parseBody(body: unknown): Turn[] | null {
   return turns.map(({ role, text }) => ({ role, text }));
 }
 
-const LIMIT = 20;
+/** Which kind of turn this is. Anything unknown is an ordinary reply. */
+export function parseMode(body: unknown): Mode {
+  return (body as { mode?: unknown } | null)?.mode === "swap" ? "swap" : "reply";
+}
+
+const LIMIT = 30;
 const WINDOW_MS = 10 * 60_000;
 const hits = new Map<string, { count: number; resetAt: number }>();
 

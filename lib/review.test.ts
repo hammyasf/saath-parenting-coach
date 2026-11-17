@@ -9,10 +9,11 @@ import type { GateResult, Plan, Turn } from "./types";
 
 const plan: Plan = {
   acknowledge: "a",
-  steps: [{ title: "t", how: "h" }],
+  steps: [{ title: "t", how: "h", say: null, why: "y" }],
   watchFor: "w",
   checkIn: { question: "q", whenLabel: "tomorrow", afterHours: 24 },
   declined: null,
+  timeline: null,
 };
 const calm: GateResult = {
   danger: 0, abuse: 0, selfHarm: 0, parentStruggle: 0,
@@ -100,13 +101,13 @@ test("gate result with an unknown language returns fallback", async () => {
 
 // 10. Over-long model output must not become a wall of text or lock the conversation.
 test("validatePlan rejects over-long fields", () => {
-  expect(validatePlan({ ...plan, steps: [{ title: "t".repeat(81), how: "h" }] })).toBeNull();
+  expect(validatePlan({ ...plan, steps: [{ title: "t".repeat(81), how: "h", say: null, why: "y" }] })).toBeNull();
   expect(validatePlan({ ...plan, acknowledge: "a".repeat(401) })).toBeNull();
   expect(validatePlan(plan)).toEqual(plan);
 });
 
 test("summary stays well under the request text limit", () => {
-  const long: Plan = { ...plan, steps: Array(3).fill({ title: "t".repeat(80), how: "h" }), checkIn: { ...plan.checkIn, question: "q".repeat(400) } };
+  const long: Plan = { ...plan, steps: Array(3).fill({ title: "t".repeat(80), how: "h", say: null, why: "y" }), checkIn: { ...plan.checkIn, question: "q".repeat(400) } };
   expect(summary(long).length).toBeLessThanOrEqual(300);
 });
 

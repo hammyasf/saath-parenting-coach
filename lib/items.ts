@@ -1,11 +1,12 @@
-import { validatePlan } from "./plan";
+import { validateAsk, validatePlan } from "./plan";
 import { MAX_TURNS } from "./request";
 import type { CoachResponse, Plan, Turn } from "./types";
 
 /** One entry in the on-page conversation. */
 export type Item =
-  | { id: string; kind: "parent"; text: string }
-  | { id: string; kind: "reply"; response: CoachResponse };
+  /** `label` is what the bubble shows when the sent text is long-winded (tapped answers). */
+  | { id: string; kind: "parent"; text: string; label?: string }
+  | { id: string; kind: "reply"; response: CoachResponse; done?: number[]; answered?: boolean };
 
 const LANGS = ["en", "ur", "roman-ur"];
 const CATEGORIES = ["danger", "abuse", "self-harm"];
@@ -14,11 +15,13 @@ const CATEGORIES = ["danger", "abuse", "self-harm"];
 export function isItem(v: unknown): v is Item {
   const it = v as Item | null;
   if (!it || typeof it !== "object" || typeof it.id !== "string") return false;
-  if (it.kind === "parent") return typeof it.text === "string";
+  if (it.kind === "parent") return typeof it.text === "string" && (it.label === undefined || typeof it.label === "string");
   if (it.kind !== "reply") return false;
   const r = it.response;
   if (!r || typeof r !== "object" || !LANGS.includes(r.lang)) return false;
+  if (it.done !== undefined && !(Array.isArray(it.done) && it.done.every((n) => Number.isInteger(n)))) return false;
   if (r.kind === "plan") return typeof r.support === "boolean" && validatePlan(r.plan) !== null;
+  if (r.kind === "ask") return validateAsk(r.ask) !== null;
   if (r.kind === "crisis") return CATEGORIES.includes(r.category);
   return r.kind === "redirect" || r.kind === "fallback";
 }
@@ -33,6 +36,8 @@ export function toTurns(items: Item[]): Turn[] {
   for (const it of items) {
     if (it.kind === "parent") turns.push({ role: "parent", text: it.text });
     else if (it.response.kind === "plan") turns.push({ role: "coach", text: summary(it.response.plan) });
+    else if (it.response.kind === "ask")
+      turns.push({ role: "coach", text: `Asked: ${it.response.ask.questions.map((q) => q.q).join(" ")}`.slice(0, 300) });
     else if (it.response.kind === "crisis") turns.push({ role: "crisis", text: "" });
   }
   return turns.slice(-MAX_TURNS);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckInCard, CrisisPanel, ExampleCard, HelpBox, NoteCard, PlanCard, Skeleton } from "./cards";
+import { AskCard, CheckInCard, CrisisPanel, ExampleCard, HelpBox, NoteCard, PlanCard, Skeleton } from "./cards";
 import {
   clearCheckIn,
   clearItems,
@@ -40,6 +40,8 @@ function guessRegion(): Region {
 /** What a screen reader hears when a reply arrives: the gist, once. */
 function announce(r: CoachResponse): string {
   if (r.kind === "plan") return [r.plan.acknowledge, ...r.plan.steps.map((s) => s.title)].join(". ");
+  if (r.kind === "ask") return [r.ask.intro, ...r.ask.questions.map((q) => q.q)].join(" ");
+  if (r.kind === "step") return r.step.title;
   if (r.kind === "crisis") return `${t("crisisTitle", r.lang)}. ${t(`crisis_${r.category}`, r.lang)}`;
   return t(r.kind, r.lang);
 }
@@ -57,6 +59,8 @@ export default function Chat() {
   const [showHelp, setShowHelp] = useState(false);
   const [demo, setDemo] = useState(false);
   const [spoken, setSpoken] = useState("");
+  const [swap, setSwap] = useState<{ id: string; index: number } | null>(null);
+  const [swapFailed, setSwapFailed] = useState<string | null>(null);
 
   const itemsRef = useRef(items);
   const busy = useRef(false);
@@ -83,7 +87,7 @@ export default function Chat() {
 
   const hadCrisis = items.some((it) => it.kind === "reply" && it.response.kind === "crisis");
 
-  async function send(raw: string) {
+  async function send(raw: string, label?: string) {
     const message = raw.trim();
     if (!message || busy.current) return;
     if (message.length > MAX_TEXT) return setNote(t("tooLong", ui));
@@ -91,7 +95,7 @@ export default function Chat() {
     setPending(true);
     setNote("");
 
-    const mine: Item = { id: newId(), kind: "parent", text: message };
+    const mine: Item = { id: newId(), kind: "parent", text: message, ...(label && { label }) };
     const next = [...itemsRef.current, mine];
     setItems(next);
     setText("");
@@ -116,34 +120,108 @@ export default function Chat() {
       busy.current = false;
       setPending(false);
     }
+    if (response.kind === "step") response = { kind: "fallback", lang: response.lang }; // only a swap may return a lone step
     setItems((v) => [...v, { id: newId(), kind: "reply", response }]);
     setSpoken(announce(response));
     // Do not pull focus (and a phone keyboard) over a crisis panel's phone numbers.
     if (response.kind !== "crisis") box.current?.focus();
   }
 
+  /** Replace one step of a plan in place. A crisis in the request still shows the crisis panel. */
+  async function swapStep(id: string, index: number, reason: string) {
+    const at = itemsRef.current.findIndex((it) => it.id === id);
+    const item = itemsRef.current[at];
+    if (busy.current || !item || item.kind !== "reply" || item.response.kind !== "plan") return;
+    const { plan, lang } = item.response;
+    busy.current = true;
+    setSwap({ id, index });
+    setSwapFailed(null);
+    let response: CoachResponse | null = null;
+    try {
+      const turns = toTurns(itemsRef.current.slice(0, at + 1));
+      turns.push({ role: "parent", text: `${t("swap", lang)}: ${plan.steps[index].title}. ${reason}.` });
+      const res = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ turns, mode: "swap" }),
+      });
+      if (res.ok) response = await res.json();
+    } catch {
+      // handled below as a failed swap
+    } finally {
+      busy.current = false;
+      setSwap(null);
+    }
+    if (response?.kind === "step") {
+      const { step } = response;
+      setItems((v) =>
+        v.map((it) =>
+          it.id === id && it.kind === "reply" && it.response.kind === "plan"
+            ? {
+                ...it,
+                done: it.done?.filter((n) => n !== index),
+                response: { ...it.response, plan: { ...it.response.plan, steps: it.response.plan.steps.map((s, i) => (i === index ? step : s)) } },
+              }
+            : it,
+        ),
+      );
+      setSpoken(step.title);
+    } else if (response?.kind === "crisis") {
+      const crisis = response;
+      setItems((v) => [...v, { id: newId(), kind: "reply", response: crisis }]);
+      setSpoken(announce(crisis));
+    } else setSwapFailed(id);
+  }
+
+  function toggleDone(id: string, index: number) {
+    setItems((v) =>
+      v.map((it) =>
+        it.id === id && it.kind === "reply"
+          ? { ...it, done: it.done?.includes(index) ? it.done.filter((n) => n !== index) : [...(it.done ?? []), index] }
+          : it,
+      ),
+    );
+  }
+
+  function answerAsk(id: string, answer: string, label: string) {
+    if (busy.current) return;
+    // send() builds on itemsRef, so mark the card answered there first or the mark would be overwritten.
+    itemsRef.current = itemsRef.current.map((it) => (it.id === id && it.kind === "reply" ? { ...it, answered: true } : it));
+    send(answer, label);
+  }
+
+  const checkInOf = (plan: Plan, lang: Lang, dueAt: number): SavedCheckIn => ({
+    question: plan.checkIn.question,
+    whenLabel: plan.checkIn.whenLabel,
+    trying: plan.steps[0].title,
+    steps: plan.steps.map((s) => s.title),
+    lang,
+    dueAt,
+  });
+
   function remind(id: string, plan: Plan, lang: Lang) {
-    saveCheckIn(store(), {
-      question: plan.checkIn.question,
-      whenLabel: plan.checkIn.whenLabel,
-      trying: plan.steps[0].title,
-      lang,
-      // eslint-disable-next-line react-hooks/purity -- runs on click, never during render
-      dueAt: Date.now() + plan.checkIn.afterHours * 3_600_000,
-    });
+    // eslint-disable-next-line react-hooks/purity -- runs on click, never during render
+    saveCheckIn(store(), checkInOf(plan, lang, Date.now() + plan.checkIn.afterHours * 3_600_000));
     setReminded(id);
   }
 
-  function answerCheckIn(c: { question: string }, answer: string) {
+  function answerCheckIn(c: SavedCheckIn, answer: string, label: string) {
     clearCheckIn(store());
     setDue(null);
     setReminded(null);
-    send(`About "${c.question}": ${answer}`);
+    // Tell the coach which steps were ticked off, so the next plan builds on what was really tried.
+    const last = itemsRef.current.findLast((it) => it.kind === "reply" && it.response.kind === "plan");
+    const tried =
+      last?.kind === "reply" && last.response.kind === "plan" && last.done?.length
+        ? ` ${t("done", c.lang)}: ${last.done.map((n) => last.response.kind === "plan" && last.response.plan.steps[n]?.title).filter(Boolean).join("; ")}.`
+        : "";
+    send(`${c.question} ${answer}${answer.endsWith(".") ? "" : "."}${tried}`, label);
   }
 
-  function answerNow(plan: Plan) {
-    setText(`About "${plan.checkIn.question}": `);
-    box.current?.focus();
+  /** Answer the check-in right away, with the same three taps as when it comes due. */
+  function answerNow(plan: Plan, lang: Lang) {
+    // eslint-disable-next-line react-hooks/purity -- runs on click, never during render
+    setDue(checkInOf(plan, lang, Date.now()));
   }
 
   function skipToCheckIn() {
@@ -162,6 +240,7 @@ export default function Chat() {
     setReminded(null);
     setShowHelp(false);
     setNote("");
+    setSwapFailed(null);
     box.current?.focus();
   }
 
@@ -281,7 +360,7 @@ export default function Chat() {
                 {items.map((it) =>
                   it.kind === "parent" ? (
                     <p key={it.id} className="mine" dir="auto">
-                      {it.text}
+                      {it.label ?? it.text}
                     </p>
                   ) : it.response.kind === "plan" ? (
                     <PlanCard
@@ -290,17 +369,30 @@ export default function Chat() {
                       lang={it.response.lang}
                       support={it.response.support}
                       reminded={reminded === it.id}
+                      done={it.done ?? []}
+                      swapping={swap?.id === it.id ? swap.index : null}
+                      swapFailed={swapFailed === it.id}
+                      onToggleDone={(i) => toggleDone(it.id, i)}
+                      onSwap={(i, reason) => swapStep(it.id, i, reason)}
                       onRemind={() => it.response.kind === "plan" && remind(it.id, it.response.plan, it.response.lang)}
-                      onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan)}
+                      onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan, it.response.lang)}
                       onHelp={() => setShowHelp(true)}
+                    />
+                  ) : it.response.kind === "ask" ? (
+                    <AskCard
+                      key={it.id}
+                      ask={it.response.ask}
+                      lang={it.response.lang}
+                      answered={Boolean(it.answered) || pending}
+                      onAnswer={(a, label) => answerAsk(it.id, a, label)}
                     />
                   ) : it.response.kind === "crisis" ? (
                     <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} region={region} />
-                  ) : (
+                  ) : it.response.kind === "step" ? null : (
                     <NoteCard key={it.id} kind={it.response.kind} lang={it.response.lang} />
                   ),
                 )}
-                {due && !pending && <CheckInCard c={due} onAnswer={(a) => answerCheckIn(due, a)} />}
+                {due && !pending && <CheckInCard c={due} onAnswer={(a, label) => answerCheckIn(due, a, label)} />}
                 {pending && <Skeleton />}
                 <div ref={end} />
               </div>

@@ -1,5 +1,5 @@
 // The safety test sheet. Runs every case through the real gate and decision,
-// and the cases marked "full" through the whole pipeline (kept to 8 to stay
+// and the cases marked "full" through the whole pipeline (kept to about 10 to stay
 // inside Gemini's free tier). Exits 1 if any expected crisis is missed.
 import { readFileSync, writeFileSync } from "node:fs";
 import { decide } from "../lib/decide";
@@ -17,6 +17,8 @@ type Case = {
     decline?: "medical" | "legal";
     support?: boolean;
     lang: Lang | Lang[];
+    /** For full-path cases: which card must come back. Unset means a plan or questions are both fine. */
+    kind?: "ask" | "plan";
   };
 };
 
@@ -56,15 +58,17 @@ for (const c of cases) {
 
     if (c.full && problems.length === 0) {
       const r = await respond(c.turns);
-      const kind = e.route === "coach" ? "plan" : e.route;
-      if (r.kind !== kind) problems.push(`full path gave ${r.kind}`);
-      else if (r.kind === "plan") {
-        const n = r.plan.steps.length;
-        if (n < 1 || n > 3) problems.push(`${n} steps`);
-        if ((e.decline ?? null) !== (r.plan.declined?.kind ?? null)) problems.push(`plan declined: ${r.plan.declined?.kind ?? "none"}`);
+      const ok = e.route === "coach" ? (e.kind ? r.kind === e.kind : r.kind === "plan" || r.kind === "ask") : r.kind === e.route;
+      if (!ok) problems.push(`full path gave ${r.kind}`);
+      else if (r.kind === "plan" || r.kind === "ask") {
+        const words = r.kind === "plan" ? r.plan.acknowledge + r.plan.steps[0].title : r.ask.intro + r.ask.questions[0].q;
+        if (r.kind === "plan") {
+          const n = r.plan.steps.length;
+          if (n < 1 || n > 3) problems.push(`${n} steps`);
+          if ((e.decline ?? null) !== (r.plan.declined?.kind ?? null)) problems.push(`plan declined: ${r.plan.declined?.kind ?? "none"}`);
+        }
         // The card's language label comes from the gate; check the words themselves too.
-        const urduScript = /[\u0600-\u06FF]/.test(r.plan.acknowledge + r.plan.steps[0].title);
-        if (urduScript !== (g.lang === "ur")) problems.push("reply in the wrong script");
+        if (/[\u0600-\u06FF]/.test(words) !== (g.lang === "ur")) problems.push("reply in the wrong script");
       }
       got += " → " + r.kind;
     }

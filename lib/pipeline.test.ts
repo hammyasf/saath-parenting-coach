@@ -10,14 +10,15 @@ const calm: GateResult = {
 const clean: ReplyCheck = { diagnosis: 0, medical: 0, legal: 0 };
 const okPlan: Plan = {
   acknowledge: "That sounds exhausting.",
-  steps: [{ title: "Set one bedtime", how: "Same time every night." }],
+  steps: [{ title: "Set one bedtime", how: "Same time every night.", say: null, why: "Bodies like a clock." }],
   watchFor: "Snoring or gasping: talk to your doctor.",
   checkIn: { question: "Did bedtime start on time?", whenLabel: "tomorrow evening", afterHours: 24 },
   declined: null,
+  timeline: null,
 };
 
 test("everyday concern returns a plan", async () => {
-  const r = await respond(turns, { gate: async () => calm, coach: async () => okPlan, check: async () => clean });
+  const r = await respond(turns, { gate: async () => calm, coach: async () => ({ kind: "plan" as const, plan: okPlan }), check: async () => clean });
   expect(r).toEqual({ kind: "plan", lang: "en", plan: okPlan, support: false });
 });
 
@@ -41,7 +42,7 @@ test("blocked or empty coach reply returns fallback", async () => {
 });
 
 test("coach is told what to decline and whether to support", async () => {
-  const coach = vi.fn().mockResolvedValue(okPlan);
+  const coach = vi.fn().mockResolvedValue({ kind: "plan", plan: okPlan });
   await respond(turns, {
     gate: async () => ({ ...calm, medicalAsk: 0.9, parentStruggle: 0.9, lang: "roman-ur" }),
     coach,
@@ -51,7 +52,7 @@ test("coach is told what to decline and whether to support", async () => {
 });
 
 test("failed reply check retries once with the failed rule", async () => {
-  const coach = vi.fn().mockResolvedValue(okPlan);
+  const coach = vi.fn().mockResolvedValue({ kind: "plan", plan: okPlan });
   const check = vi.fn().mockResolvedValueOnce({ ...clean, diagnosis: 0.9 }).mockResolvedValueOnce(clean);
   const r = await respond(turns, { gate: async () => calm, coach, check });
   expect(r.kind).toBe("plan");
@@ -62,7 +63,7 @@ test("failed reply check retries once with the failed rule", async () => {
 test("two failed reply checks return fallback", async () => {
   const r = await respond(turns, {
     gate: async () => calm,
-    coach: async () => okPlan,
+    coach: async () => ({ kind: "plan" as const, plan: okPlan }),
     check: async () => ({ ...clean, medical: 0.9 }),
   });
   expect(r.kind).toBe("fallback");
@@ -71,7 +72,7 @@ test("two failed reply checks return fallback", async () => {
 test("reply check outage returns fallback", async () => {
   const r = await respond(turns, {
     gate: async () => calm,
-    coach: async () => okPlan,
+    coach: async () => ({ kind: "plan" as const, plan: okPlan }),
     check: async () => { throw new Error("down"); },
   });
   expect(r.kind).toBe("fallback");
