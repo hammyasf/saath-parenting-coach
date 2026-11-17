@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckInCard, CrisisPanel, HelpBox, NoteCard, PlanCard, Skeleton } from "./cards";
+import { CheckInCard, CrisisPanel, ExampleCard, HelpBox, NoteCard, PlanCard, Skeleton } from "./cards";
 import {
   clearCheckIn,
   clearItems,
@@ -170,154 +170,176 @@ export default function Chat() {
     store().setItem("saath.region", r);
   }
 
+  const active = loaded && (items.length > 0 || due !== null);
+
+  const composer = (
+    <div className="composer">
+      {demo && active && (
+        <button type="button" className="demo" onClick={skipToCheckIn} disabled={!reminded}>
+          {t("skipDemo", "en")}
+        </button>
+      )}
+      <label className="field-label" htmlFor="concern" dir={dirOf(ui)} lang={langAttr(ui)}>
+        {t("fieldLabel", ui)}
+      </label>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(text);
+        }}
+      >
+        <textarea
+          id="concern"
+          ref={box}
+          rows={1}
+          dir="auto"
+          value={text}
+          placeholder={t("placeholder", ui)}
+          aria-describedby={note ? "note" : undefined}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (note) setNote("");
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              send(text);
+            }
+          }}
+        />
+        <button type="submit" className="btn btn--primary" disabled={pending}>
+          {t("send", ui)}
+        </button>
+      </form>
+      {note && (
+        <p id="note" className="inline-note" role="alert">
+          {note}
+        </p>
+      )}
+      <p className="privacy" dir={dirOf(ui)} lang={langAttr(ui)}>
+        {t("tagline", ui)} {t("privacy", ui)}
+      </p>
+    </div>
+  );
+
   return (
-    <div className="app">
-      <header className="top">
-        <div className="brand">
-          <h1>Saath</h1>
-          <p dir={dirOf(ui)} lang={langAttr(ui)}>
-            {t("tagline", ui)}
+    <>
+      <header className="nav">
+        <div className="wrap nav__row">
+          <a className="skip-link" href="#concern">
+            Skip to the message box
+          </a>
+          <p className="wordmark">Saath</p>
+          <p className="sr-only" role="status">
+            {pending ? t("thinking", ui) : spoken}
           </p>
-        </div>
-        <div className="controls">
-          <div className="seg" role="group" aria-label="Page language">
-            <button type="button" aria-pressed={ui === "en"} onClick={() => setUi("en")}>
-              EN
-            </button>
-            <button type="button" aria-pressed={ui === "ur"} onClick={() => setUi("ur")} lang="ur">
-              اردو
-            </button>
+          <div className="controls">
+            <div className="seg" role="group" aria-label="Page language">
+              <button type="button" aria-pressed={ui === "en"} onClick={() => setUi("en")}>
+                EN
+              </button>
+              <button type="button" aria-pressed={ui === "ur"} onClick={() => setUi("ur")} lang="ur">
+                اردو
+              </button>
+            </div>
+            <label className="region">
+              <span className="sr-only">{t("regionLabel", "en")}</span>
+              <select value={region} onChange={(e) => pickRegion(e.target.value as Region)}>
+                {REGIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {active && (
+              <button type="button" className="link" onClick={reset} disabled={pending}>
+                {t("reset", ui)}
+              </button>
+            )}
           </div>
-          <label className="region">
-            <span className="sr-only">{t("regionLabel", "en")}</span>
-            <select value={region} onChange={(e) => pickRegion(e.target.value as Region)}>
-              {REGIONS.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" className="link" onClick={reset} disabled={pending}>
-            {t("reset", ui)}
-          </button>
         </div>
       </header>
 
-      {(hadCrisis || showHelp) && (
-        <div className="pinned">
-          {showHelp ? (
-            <HelpBox lang={ui} region={region} onClose={() => setShowHelp(false)} />
-          ) : (
-            <button type="button" className="help" onClick={() => setShowHelp(true)}>
-              {t("getHelpNow", ui)}
-            </button>
-          )}
-        </div>
-      )}
-
-      <main className="thread">
-        {loaded && items.length === 0 && !due && (
-          <section className="empty">
-            <h2 dir={dirOf(ui)} lang={langAttr(ui)}>
-              {t("welcome", ui)}
-            </h2>
-            <div className="starters">
-              {STARTERS.map((s) => (
-                <button
-                  key={s.lang}
-                  type="button"
-                  className="chip"
-                  dir={dirOf(s.lang)}
-                  lang={langAttr(s.lang)}
-                  onClick={() => send(s.text)}
-                >
-                  {s.text}
-                </button>
-              ))}
+      <main id="top">
+        {active ? (
+          <section className="talk">
+            <div className="wrap wrap--narrow talk__col">
+              <h1 className="sr-only">Saath, your parenting coach</h1>
+              {(hadCrisis || showHelp) && (
+                <div className="pinned">
+                  {showHelp ? (
+                    <HelpBox lang={ui} region={region} onClose={() => setShowHelp(false)} />
+                  ) : (
+                    <button type="button" className="btn btn--secondary" onClick={() => setShowHelp(true)}>
+                      {t("getHelpNow", ui)}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="thread">
+                {items.map((it) =>
+                  it.kind === "parent" ? (
+                    <p key={it.id} className="mine" dir="auto">
+                      {it.text}
+                    </p>
+                  ) : it.response.kind === "plan" ? (
+                    <PlanCard
+                      key={it.id}
+                      plan={it.response.plan}
+                      lang={it.response.lang}
+                      support={it.response.support}
+                      reminded={reminded === it.id}
+                      onRemind={() => it.response.kind === "plan" && remind(it.id, it.response.plan, it.response.lang)}
+                      onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan)}
+                      onHelp={() => setShowHelp(true)}
+                    />
+                  ) : it.response.kind === "crisis" ? (
+                    <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} region={region} />
+                  ) : (
+                    <NoteCard key={it.id} kind={it.response.kind} lang={it.response.lang} />
+                  ),
+                )}
+                {due && !pending && <CheckInCard c={due} onAnswer={(a) => answerCheckIn(due, a)} />}
+                {pending && <Skeleton />}
+                <div ref={end} />
+              </div>
+              {composer}
+            </div>
+          </section>
+        ) : (
+          <section className="hero" data-enter>
+            <div className="wrap">
+              <div className="hero-text hero__grid">
+              <div className="hero__text">
+                <h1 dir={dirOf(ui)} lang={langAttr(ui)}>
+                  {t("welcome", ui)}
+                </h1>
+                <p className="lead" dir={dirOf(ui)} lang={langAttr(ui)}>
+                  {t("lead", ui)}
+                </p>
+                {composer}
+                <div className="starters">
+                  {STARTERS.map((s) => (
+                    <button
+                      key={s.lang}
+                      type="button"
+                      className="chip"
+                      dir={dirOf(s.lang)}
+                      lang={langAttr(s.lang)}
+                      onClick={() => send(s.text)}
+                    >
+                      {s.text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <ExampleCard />
+              </div>
             </div>
           </section>
         )}
-
-        {items.map((it) =>
-          it.kind === "parent" ? (
-            <p key={it.id} className="mine" dir="auto">
-              {it.text}
-            </p>
-          ) : it.response.kind === "plan" ? (
-            <PlanCard
-              key={it.id}
-              plan={it.response.plan}
-              lang={it.response.lang}
-              support={it.response.support}
-              reminded={reminded === it.id}
-              onRemind={() => it.response.kind === "plan" && remind(it.id, it.response.plan, it.response.lang)}
-              onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan)}
-              onHelp={() => setShowHelp(true)}
-            />
-          ) : it.response.kind === "crisis" ? (
-            <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} region={region} />
-          ) : (
-            <NoteCard key={it.id} kind={it.response.kind} lang={it.response.lang} />
-          ),
-        )}
-
-        {due && !pending && <CheckInCard c={due} onAnswer={(a) => answerCheckIn(due, a)} />}
-        {pending && <Skeleton />}
-        <div ref={end} />
       </main>
-
-      <p className="sr-only" role="status">
-        {pending ? t("thinking", ui) : spoken}
-      </p>
-
-      <footer className="composer">
-        {demo && (
-          <button type="button" className="demo" onClick={skipToCheckIn} disabled={!reminded}>
-            {t("skipDemo", "en")}
-          </button>
-        )}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            send(text);
-          }}
-        >
-          <label className="sr-only" htmlFor="concern">
-            {t("placeholder", ui)}
-          </label>
-          <textarea
-            id="concern"
-            ref={box}
-            rows={1}
-            dir="auto"
-            value={text}
-            placeholder={t("placeholder", ui)}
-            aria-describedby={note ? "note" : undefined}
-            onChange={(e) => {
-              setText(e.target.value);
-              if (note) setNote("");
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                send(text);
-              }
-            }}
-          />
-          <button type="submit" className="btn send" disabled={pending || !text.trim()}>
-            {t("send", ui)}
-          </button>
-        </form>
-        {note && (
-          <p id="note" className="inline-note" role="alert">
-            {note}
-          </p>
-        )}
-        <p className="privacy" dir={dirOf(ui)} lang={langAttr(ui)}>
-          {t("privacy", ui)}
-        </p>
-      </footer>
-    </div>
+    </>
   );
 }

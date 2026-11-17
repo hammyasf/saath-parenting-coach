@@ -74,17 +74,17 @@ export function PlanCard({
               ✓ {t("saved", lang)} {plan.checkIn.whenLabel}
             </span>
           ) : (
-            <button type="button" className="btn" onClick={onRemind}>
+            <button type="button" className="btn btn--secondary" onClick={onRemind}>
               {t("remindMe", lang)}
             </button>
           )}
-          <button type="button" className="btn ghost" onClick={onAnswerNow}>
+          <button type="button" className="btn btn--secondary" onClick={onAnswerNow}>
             {t("answerNow", lang)}
           </button>
         </div>
       </section>
       {support && (
-        <button type="button" className="strip" onClick={onHelp}>
+        <button type="button" className="link" onClick={onHelp}>
           {t("supportStrip", lang)}
         </button>
       )}
@@ -141,7 +141,7 @@ export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answe
       <p className="question">{c.question}</p>
       <div className="row">
         {(["better", "same", "harder"] as const).map((k) => (
-          <button key={k} type="button" className="btn ghost" onClick={() => onAnswer(t(k, lang))}>
+          <button key={k} type="button" className="btn btn--secondary" onClick={() => onAnswer(t(k, lang))}>
             {t(k, lang)}
           </button>
         ))}
@@ -156,6 +156,31 @@ export function Skeleton() {
       <i />
       <i />
       <i />
+    </div>
+  );
+}
+
+/** The first screen's picture: what a reply looks like, before the parent has typed anything. */
+export function ExampleCard() {
+  return (
+    <div className="hero__media" role="img" aria-label="Example reply: a plan card with three steps and a check-in question for tomorrow evening">
+      <div className="mock" aria-hidden="true">
+        <div className="card">
+          <p className="ack">Two-hour bedtimes wear everyone down.</p>
+          <ol className="steps">
+            {["Set one bedtime", "Dim the house", "Stay boring after lights out"].map((title, i) => (
+              <li key={title}>
+                <span className="step-n">{i + 1}</span>
+                <p className="mock-step">{title}</p>
+              </li>
+            ))}
+          </ol>
+          <div className="checkin">
+            <p className="eyebrow">Check-in · tomorrow evening</p>
+            <p className="question">Did bedtime start on time?</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

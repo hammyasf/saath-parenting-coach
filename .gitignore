@@ -45,3 +45,4 @@ docs/
 .superpowers/
 !.env.example
 .claude/
+.taste-skill/

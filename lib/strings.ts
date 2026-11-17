@@ -9,12 +9,22 @@ const S = {
     "roman-ur": "AI coach hai, doctor nahi.",
   },
   welcome: {
-    en: "What's going on with your child today?",
+    en: "Tell your parenting coach what's going on today",
     ur: "آج آپ کے بچے کے ساتھ کیا مسئلہ ہے؟",
     "roman-ur": "Aaj aap ke bachay ke saath kya masla hai?",
   },
+  lead: {
+    en: "Write it in English, Urdu or Roman Urdu. You get up to three steps for today and a check-in tomorrow.",
+    ur: "انگریزی، اردو یا رومن اردو میں لکھیں۔ آج کے لیے تین قدم اور کل ایک سوال ملے گا۔",
+    "roman-ur": "English, Urdu ya Roman Urdu mein likhein. Aaj ke liye teen qadam aur kal ek sawal milega.",
+  },
+  fieldLabel: {
+    en: "Your concern",
+    ur: "آپ کی پریشانی",
+    "roman-ur": "Aap ki pareshani",
+  },
   placeholder: {
-    en: "Type your concern…",
+    en: "My 6-year-old won't…",
     ur: "اپنی پریشانی لکھیں…",
     "roman-ur": "Apni pareshani likhein…",
   },
