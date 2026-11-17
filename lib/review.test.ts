@@ -121,3 +121,24 @@ test("toTurns keeps parent text, plan memory and crisis markers, and drops notes
     ]).map((t) => t.role),
   ).toEqual(["parent", "coach", "crisis", "parent"]);
 });
+
+// Found on the first live run: the primary Gemini model returned 503 "high demand".
+import { tryModels } from "./coach";
+
+test("tryModels falls back to the next model when one is unavailable", async () => {
+  const call = vi.fn().mockRejectedValueOnce(Object.assign(new Error("busy"), { status: 503 })).mockResolvedValueOnce("ok");
+  expect(await tryModels(["a", "b"], call)).toBe("ok");
+  expect(call.mock.calls.map((c) => c[0])).toEqual(["a", "b"]);
+});
+
+test("tryModels does not retry a request the provider refused (400, e.g. safety block)", async () => {
+  const call = vi.fn().mockRejectedValue(Object.assign(new Error("safety"), { status: 400 }));
+  expect(await tryModels(["a", "b"], call)).toBeNull();
+  expect(call).toHaveBeenCalledTimes(1);
+});
+
+test("tryModels returns null when every model fails, and skips duplicates", async () => {
+  const call = vi.fn().mockRejectedValue(new Error("timeout"));
+  expect(await tryModels(["a", "a", "b"], call)).toBeNull();
+  expect(call).toHaveBeenCalledTimes(2);
+});

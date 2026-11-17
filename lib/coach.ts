@@ -105,6 +105,27 @@ export function conversationFor(turns: Turn[]): string {
     .join("\n");
 }
 
+/**
+ * Try each model in turn. A busy or slow model (503, timeout) moves on to the next;
+ * a refused request (4xx, such as Gemini's own safety block) stops at once, since
+ * asking another model the same thing is not the answer to a refusal.
+ */
+export async function tryModels<T>(models: string[], call: (model: string) => Promise<T>): Promise<T | null> {
+  for (const model of new Set(models)) {
+    try {
+      return await call(model);
+    } catch (e) {
+      const status = (e as { status?: number }).status;
+      // Operational detail only: never the parent's words.
+      console.warn(`coach: ${model} failed (${status ?? (e as Error).name})`);
+      if (status && status >= 400 && status < 500 && status !== 429) return null;
+    }
+  }
+  return null;
+}
+
+const TIMEOUT_MS = 7_000;
+
 let client: GoogleGenAI | undefined;
 
 /**
@@ -113,16 +134,26 @@ let client: GoogleGenAI | undefined;
  */
 export async function runCoach(input: CoachInput): Promise<Plan | null> {
   client ??= new GoogleGenAI({});
-  try {
-    const interaction = await client.interactions.create({
-      model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
-      system_instruction: instructions(input),
-      input: conversationFor(input.turns),
-      store: false, // do not keep parent messages at Google
-      response_format: { type: "text", mime_type: "application/json", schema },
-    });
-    return parsePlan(interaction.output_text ?? "");
-  } catch {
-    return null;
-  }
+  const ai = client;
+  const models = [
+    process.env.GEMINI_MODEL || "gemini-3.8-flash",
+    ...(process.env.GEMINI_FALLBACK_MODELS || "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(","),
+  ];
+  const text = await tryModels(models, async (model) => {
+    const interaction = await ai.interactions.create(
+      {
+        model,
+        system_instruction: instructions(input),
+        input: conversationFor(input.turns),
+        store: false, // do not keep parent messages at Google
+        response_format: { type: "text", mime_type: "application/json", schema },
+      },
+      { timeout: TIMEOUT_MS, maxRetries: 0 },
+    );
+    return interaction.output_text ?? "";
+  });
+  if (text === null) return null;
+  const plan = parsePlan(text);
+  if (!plan) console.warn("coach: reply did not match the plan shape");
+  return plan;
 }

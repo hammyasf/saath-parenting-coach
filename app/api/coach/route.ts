@@ -2,7 +2,7 @@ import { respond } from "@/lib/pipeline";
 import { allow, parseBody } from "@/lib/request";
 
 // Gate + coach + check can take a while on a cold start; give the function room.
-export const maxDuration = 30;
+export const maxDuration = 40;
 
 // Message text is never logged or stored here.
 export async function POST(request: Request) {
