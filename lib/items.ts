@@ -1,5 +1,5 @@
 import { validateAsk, validatePlan } from "./plan";
-import { MAX_TURNS } from "./request";
+import { MAX_NOTE, MAX_TURNS } from "./request";
 import type { CoachResponse, Plan, Turn } from "./types";
 
 /** One entry in the on-page conversation. */
@@ -30,7 +30,14 @@ export function isItem(v: unknown): v is Item {
 export const summary = (p: Plan) =>
   `Plan: ${p.steps.map((s) => s.title).join("; ")}. Check-in question: ${p.checkIn.question}`.slice(0, 300);
 
-/** What the server needs: parent messages, plan memories, and where a crisis panel was shown. */
+const RECENT = 6; // matches the gate's window in lib/decide.ts
+
+/**
+ * What the server needs: parent messages, plan memories, and where a crisis panel was shown.
+ * Once the conversation outgrows the recent window, what the parent said at the start (and
+ * their tapped answers) rides along as one pinned note, so the child's age and the details
+ * are not forgotten. Nothing from before a crisis panel is ever pinned.
+ */
 export function toTurns(items: Item[]): Turn[] {
   const turns: Turn[] = [];
   for (const it of items) {
@@ -39,6 +46,14 @@ export function toTurns(items: Item[]): Turn[] {
     else if (it.response.kind === "ask")
       turns.push({ role: "coach", text: `Asked: ${it.response.ask.questions.map((q) => q.q).join(" ")}`.slice(0, 300) });
     else if (it.response.kind === "crisis") turns.push({ role: "crisis", text: "" });
+  }
+  const start = turns.findLastIndex((t) => t.role === "crisis") + 1;
+  const fresh = turns.slice(start);
+  if (fresh.length > RECENT && fresh[0].role === "parent") {
+    const answers = fresh[1]?.text.startsWith("Asked:") && fresh[2]?.role === "parent" ? ` ${fresh[2].text}` : "";
+    const note: Turn = { role: "parent", text: (fresh[0].text + answers).slice(0, MAX_NOTE), pinned: true };
+    // Keep the crisis marker (if any), the note, then as many recent turns as fit.
+    return [...turns.slice(0, start).slice(-1), note, ...fresh.slice(-(MAX_TURNS - 2))];
   }
   return turns.slice(-MAX_TURNS);
 }

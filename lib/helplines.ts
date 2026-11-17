@@ -20,7 +20,7 @@ const PK_RESCUE: Helpline = {
 const AE_CHILD: Helpline = {
   label: "Ministry of Interior Child Protection Centre",
   number: "116111",
-  source: "https://u.ae/en/information-and-services/justice-safety-and-the-law/children-safety/report-child-abuse",
+  source: "https://www.adpolice.gov.ae/en/Media-Center/News/2021/06/19/MoI-Urges-the-Society-to-Cooperate-in-Protecting-Children-from-Abuse",
 };
 const AE_POLICE: Helpline = {
   label: "Police",

@@ -16,6 +16,7 @@ import {
 import type { Region } from "@/lib/helplines";
 import { isItem, newId, toTurns, type Item } from "@/lib/items";
 import { MAX_TEXT } from "@/lib/request";
+import { checkInIcs, planToText } from "@/lib/share";
 import { STARTERS, dirOf, langAttr, t } from "@/lib/strings";
 import type { CoachResponse, Lang, Plan } from "@/lib/types";
 
@@ -205,6 +206,32 @@ export default function Chat() {
     setReminded(id);
   }
 
+  /** Share sheet on phones (WhatsApp and the rest); copy to the clipboard elsewhere. */
+  async function sharePlan(plan: Plan, lang: Lang): Promise<"shared" | "copied" | "failed"> {
+    const text = planToText(plan, lang);
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return "shared";
+      }
+      await navigator.clipboard.writeText(text);
+      return "copied";
+    } catch {
+      return "failed"; // dismissed the sheet, or the browser refused
+    }
+  }
+
+  /** The saved check-in as a calendar file, so the reminder exists outside this tab. */
+  function downloadCalendar() {
+    const c = peekCheckIn(store());
+    if (!c) return;
+    const ics = checkInIcs(c, Date.now(), `${window.location.origin}/`);
+    const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: "saath-check-in.ics" });
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function answerCheckIn(c: SavedCheckIn, answer: string, label: string) {
     clearCheckIn(store());
     setDue(null);
@@ -332,8 +359,11 @@ export default function Chat() {
               </select>
             </label>
             {active && (
-              <button type="button" className="link" onClick={reset} disabled={pending}>
-                {t("reset", ui)}
+              <button type="button" className="link reset" onClick={reset} disabled={pending} aria-label={t("reset", ui)}>
+                <span className="reset__text">{t("reset", ui)}</span>
+                <svg className="reset__icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M3 8a5 5 0 1 0 1.6-3.7M3 2.5v2.8h2.8" />
+                </svg>
               </button>
             )}
           </div>
@@ -375,7 +405,11 @@ export default function Chat() {
                       onToggleDone={(i) => toggleDone(it.id, i)}
                       onSwap={(i, reason) => swapStep(it.id, i, reason)}
                       onRemind={() => it.response.kind === "plan" && remind(it.id, it.response.plan, it.response.lang)}
+                      onCalendar={downloadCalendar}
                       onAnswerNow={() => it.response.kind === "plan" && answerNow(it.response.plan, it.response.lang)}
+                      onShare={async () =>
+                        it.response.kind === "plan" ? sharePlan(it.response.plan, it.response.lang) : "failed"
+                      }
                       onHelp={() => setShowHelp(true)}
                     />
                   ) : it.response.kind === "ask" ? (
@@ -393,7 +427,7 @@ export default function Chat() {
                   ),
                 )}
                 {due && !pending && <CheckInCard c={due} onAnswer={(a, label) => answerCheckIn(due, a, label)} />}
-                {pending && <Skeleton />}
+                {pending && <Skeleton label={t("thinking", ui)} />}
                 <div ref={end} />
               </div>
               {composer}

@@ -10,10 +10,14 @@ export const REPLY_FAIL_AT = 0.5;
 
 const WINDOW = 6;
 
-/** Turns the gate should judge: everything after the last crisis panel, most recent 6. */
+/**
+ * Turns the gate should judge: everything after the last crisis panel, most recent 6,
+ * plus the pinned note of what the parent said at the start (if it is after that panel).
+ */
 export function gateWindow(turns: Turn[]): Turn[] {
   const lastCrisis = turns.findLastIndex((t) => t.role === "crisis");
-  return turns.slice(lastCrisis + 1).slice(-WINDOW);
+  const fresh = turns.slice(lastCrisis + 1);
+  return [...fresh.filter((t) => t.pinned), ...fresh.filter((t) => !t.pinned).slice(-WINDOW)];
 }
 
 export function decide(g: GateResult): Decision {

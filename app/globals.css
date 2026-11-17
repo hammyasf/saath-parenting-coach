@@ -249,6 +249,38 @@ textarea {
   cursor: pointer;
 }
 
+/* "Start over": words where there is room, an icon on a phone */
+.reset {
+  white-space: nowrap;
+}
+
+.reset__icon {
+  display: none;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (max-width: 479px) {
+  .reset {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--btn-h);
+    padding: 0;
+  }
+  .reset__text {
+    display: none;
+  }
+  .reset__icon {
+    display: block;
+  }
+}
+
 /* ---------- the one link look ---------- */
 .link {
   min-height: var(--btn-h);
@@ -870,11 +902,15 @@ button.opt:active:not(:disabled),
   font-weight: 500;
 }
 
-/* the quiet help link at the foot of a plan */
-.card.plan > .link {
-  display: block;
-  width: 100%;
-  margin-top: var(--s-4);
+/* the foot of a plan: share it, and the quiet help link */
+.plan__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: var(--s-3);
+}
+
+.plan__foot .link {
   font-size: var(--t-body);
   font-weight: 400;
 }
@@ -996,16 +1032,16 @@ button.opt:active:not(:disabled),
   animation: pulse 1.4s ease-in-out infinite;
 }
 
-.skeleton i:nth-child(1) {
+.skeleton i:nth-of-type(1) {
   width: 55%;
 }
 
-.skeleton i:nth-child(2) {
+.skeleton i:nth-of-type(2) {
   width: 85%;
   animation-delay: 0.15s;
 }
 
-.skeleton i:nth-child(3) {
+.skeleton i:nth-of-type(3) {
   width: 70%;
   animation-delay: 0.3s;
 }

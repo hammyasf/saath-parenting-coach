@@ -198,7 +198,9 @@ export function parseReply(text: string, mode: Mode, allowAsk: boolean): CoachRe
  */
 export function conversationFor(turns: Turn[]): string {
   return gateWindow(turns)
-    .map((t) => `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`)
+    .map((t) =>
+      t.pinned ? `What the parent told you earlier: ${t.text}` : `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`,
+    )
     .join("\n");
 }
 

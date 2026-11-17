@@ -68,9 +68,9 @@ let client: TypeSafeClient | undefined;
 export async function runGate(turns: Turn[]): Promise<GateResult> {
   client ??= new TypeSafeClient();
   const recent = gateWindow(turns);
-  const latest = recent.findLast((t) => t.role === "parent")?.text ?? "";
+  const latest = recent.findLast((t) => t.role === "parent" && !t.pinned)?.text ?? "";
   const { answers: a } = await client.systemOne({
-    state: { conversation: recent.map((t) => ({ who: t.role, text: t.text })), latest },
+    state: { conversation: recent.map((t) => ({ who: t.pinned ? "parent, earlier" : t.role, text: t.text })), latest },
     questions,
   });
   return {

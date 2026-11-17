@@ -37,6 +37,9 @@ const S = {
   tonight: { en: "Tonight", ur: "آج رات", "roman-ur": "Aaj raat" },
   whichStep: { en: "Which step didn't hold?", ur: "کون سا قدم نہیں چلا؟", "roman-ur": "Kaun sa qadam nahi chala?" },
   allSteps: { en: "All of them", ur: "سب", "roman-ur": "Sab" },
+  share: { en: "Share this plan", ur: "یہ پلان شیئر کریں", "roman-ur": "Yeh plan share karein" },
+  copied: { en: "Copied. Paste it anywhere.", ur: "کاپی ہو گیا۔ کہیں بھی پیسٹ کریں۔", "roman-ur": "Copy ho gaya. Kahin bhi paste karein." },
+  addCal: { en: "Add to calendar", ur: "کیلنڈر میں شامل کریں", "roman-ur": "Calendar mein shamil karein" },
   fieldLabel: {
     en: "Your concern",
     ur: "آپ کی پریشانی",

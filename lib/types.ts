@@ -1,7 +1,12 @@
 export type Lang = "en" | "ur" | "roman-ur";
 
 /** A "crisis" turn marks where a crisis panel was shown; the gate judges only what comes after it. */
-export type Turn = { role: "parent" | "coach" | "crisis"; text: string };
+export type Turn = {
+  role: "parent" | "coach" | "crisis";
+  text: string;
+  /** What the parent said at the start, kept in view after it scrolls out of the recent window. */
+  pinned?: true;
+};
 
 /** Probabilities (0–1) from the gate, plus the detected language and script. */
 export type GateResult = {

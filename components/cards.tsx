@@ -94,7 +94,9 @@ export function PlanCard({
   onToggleDone,
   onSwap,
   onRemind,
+  onCalendar,
   onAnswerNow,
+  onShare,
   onHelp,
 }: {
   plan: Plan;
@@ -108,10 +110,13 @@ export function PlanCard({
   onToggleDone: (index: number) => void;
   onSwap: (index: number, reason: string) => void;
   onRemind: () => void;
+  onCalendar: () => void;
   onAnswerNow: () => void;
+  onShare: () => Promise<"shared" | "copied" | "failed">;
   onHelp: () => void;
 }) {
   const [open, setOpen] = useState<number | null>(0);
+  const [copied, setCopied] = useState(false);
   const [asking, setAsking] = useState<number | null>(null);
   return (
     <article className="card plan" dir={dirOf(lang)} lang={langAttr(lang)}>
@@ -231,9 +236,14 @@ export function PlanCard({
         <p className="question">{plan.checkIn.question}</p>
         <div className="row">
           {reminded ? (
-            <span className="saved" role="status">
-              ✓ {t("saved", lang)} {plan.checkIn.whenLabel}
-            </span>
+            <>
+              <span className="saved" role="status">
+                ✓ {t("saved", lang)} {plan.checkIn.whenLabel}
+              </span>
+              <button type="button" className="btn btn--secondary" onClick={onCalendar}>
+                {t("addCal", lang)}
+              </button>
+            </>
           ) : (
             <button type="button" className="btn btn--secondary" onClick={onRemind}>
               {t("remindMe", lang)}
@@ -244,11 +254,21 @@ export function PlanCard({
           </button>
         </div>
       </section>
-      {support && (
-        <button type="button" className="link" onClick={onHelp}>
-          {t("supportStrip", lang)}
+      <div className="plan__foot">
+        <button type="button" className="link" onClick={async () => setCopied((await onShare()) === "copied")}>
+          {t("share", lang)}
         </button>
-      )}
+        {copied && (
+          <span className="eyebrow" role="status">
+            {t("copied", lang)}
+          </span>
+        )}
+        {support && (
+          <button type="button" className="link" onClick={onHelp}>
+            {t("supportStrip", lang)}
+          </button>
+        )}
+      </div>
     </article>
   );
 }
@@ -337,9 +357,10 @@ export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answe
   );
 }
 
-export function Skeleton() {
+export function Skeleton({ label }: { label: string }) {
   return (
     <div className="card skeleton" aria-hidden="true">
+      <p className="eyebrow">{label}</p>
       <i />
       <i />
       <i />

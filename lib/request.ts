@@ -2,6 +2,7 @@ import type { Mode, Turn } from "./types";
 
 export const MAX_TURNS = 20;
 export const MAX_TEXT = 2000;
+export const MAX_NOTE = 400;
 
 const ROLES = new Set(["parent", "coach", "crisis"]);
 
@@ -9,12 +10,17 @@ const ROLES = new Set(["parent", "coach", "crisis"]);
 export function parseBody(body: unknown): Turn[] | null {
   const turns = (body as { turns?: unknown } | null)?.turns;
   if (!Array.isArray(turns) || turns.length < 1 || turns.length > MAX_TURNS) return null;
+  let pinned = 0;
   for (const t of turns) {
     if (!t || !ROLES.has(t.role) || typeof t.text !== "string" || t.text.length > MAX_TEXT) return null;
+    if (t.pinned !== undefined) {
+      // One short note, in the parent's own words only.
+      if (t.pinned !== true || t.role !== "parent" || t.text.length > MAX_NOTE || ++pinned > 1) return null;
+    }
   }
   const last = turns[turns.length - 1];
   if (last.role !== "parent" || !last.text.trim()) return null;
-  return turns.map(({ role, text }) => ({ role, text }));
+  return turns.map(({ role, text, pinned }) => ({ role, text, ...(pinned && { pinned }) }));
 }
 
 /** Which kind of turn this is. Anything unknown is an ordinary reply. */

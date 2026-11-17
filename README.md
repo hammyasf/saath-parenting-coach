@@ -59,6 +59,8 @@ The coach does not answer in chat text. It returns one of a few typed cards, and
 - **A plan with exact words.** One to three steps. Each opens to the words to say to the child, why it works at that age, a "Done" tick, and "Swap this step" (too hard / tried it / doesn't fit), which replaces that one step in place.
 - **Tonight.** A short timeline when the concern runs on a clock (bedtime, mornings).
 - **A check-in that comes back.** "Remind me" saves it in the browser. When it is due the page opens on it: Better / Same / Harder, then which step did not hold. The coach changes only what failed.
+- **Share and calendar.** "Share this plan" opens the phone's share sheet (WhatsApp included) or copies the plan as plain text. A saved check-in can be added to the calendar, so the reminder exists outside the browser tab.
+- **It keeps the start in mind.** The coach is shown the last six turns. Once a conversation is longer than that, what the parent said first and their tapped answers ride along as one pinned note, so the child's age and the details are not lost. Nothing from before a crisis panel is ever carried forward.
 - In the language and script the parent wrote in. Urdu script is laid out right to left.
 - Conversation history on the page, kept only in the browser. No login, no database.
 - Keyboard and screen-reader support, light and dark themes, phone-first layout.
@@ -105,11 +107,16 @@ Urdu-script cases were written by a model, not a native speaker.
 
 The safety decision is right on all 25, with no crisis missed and no threshold tuning. Rows with an arrow also ran the whole pipeline. A row ending in "fallback" means Gemini's free tier refused the request (rate limit or "high demand") and the parent saw the safe fallback card; those same cases passed on other runs.
 
+## What I would build next
+
+- **Grounded advice.** Retrieve from a vetted, licensed set of parenting guidance and show the source on each step. Left out here on purpose: the brief says no database, there is no vetted corpus to retrieve from, and unvetted material would make the advice worse.
+- **Memory across devices.** Everything lives in one browser today. A real product would keep a child profile on the server, behind a login.
+
 ## Known limits
 
 - Urdu-script copy and test cases were written by a model and checked by back-translation, not reviewed by a native reader.
 - The request cap is in memory, per server instance.
-- Helpline numbers were checked against official pages on 17 Nov 2026; sources are next to each number in `lib/helplines.ts`. No mental-health line could be confirmed on an official page for either region, so self-harm shows the emergency number and "go to the nearest hospital".
+- Helpline numbers were checked against official pages on 17 Nov 2026; sources are next to each number in `lib/helplines.ts`. UAE 999 and 998 were read as quoted from the UAE government portal by a search engine; the portal page itself would not load for checking. No mental-health line could be confirmed on an official page for either region, so self-harm shows the emergency number and "go to the nearest hospital".
 - This is a demo, not a medical or emergency service.
 
 ## Privacy
