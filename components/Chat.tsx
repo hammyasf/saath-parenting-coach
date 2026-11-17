@@ -214,12 +214,14 @@ export default function Chat() {
       return "copied";
     } catch {
       // Clipboard API refused (no permission, not focused): the older copy command still works.
+      const from = document.activeElement as HTMLElement | null;
       const area = Object.assign(document.createElement("textarea"), { value: text });
       area.style.cssText = "position:fixed;opacity:0";
       document.body.append(area);
       area.select();
       const ok = document.execCommand("copy");
       area.remove();
+      from?.focus(); // selecting the hidden box took focus from the Share button
       return ok ? "copied" : "failed";
     }
   }
@@ -236,6 +238,7 @@ export default function Chat() {
   }
 
   function answerCheckIn(c: SavedCheckIn, answer: string, label: string) {
+    if (busy.current) return; // a reply is on its way: do not drop the reminder for an answer that cannot be sent
     clearCheckIn(store());
     setDue(null);
     setReminded(null);

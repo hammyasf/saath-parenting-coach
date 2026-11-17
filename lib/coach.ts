@@ -223,7 +223,7 @@ export async function tryModels<T>(models: string[], call: (model: string) => Pr
   return null;
 }
 
-const TIMEOUT_MS = 8_000;
+const TIMEOUT_MS = 14_000; // a full plan from a lite model takes 6–9 s when the service is busy
 
 let client: GoogleGenAI | undefined;
 

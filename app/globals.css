@@ -155,7 +155,7 @@ textarea {
   color: var(--muted);
 }
 
-.eyebrow:lang(ur) {
+.eyebrow:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2;
 }
 
@@ -213,15 +213,14 @@ textarea {
 
 .seg {
   display: inline-flex;
-  padding: 3px;
   border-radius: var(--r-btn);
   background: var(--surface);
 }
 
 .seg button {
-  min-height: 44px;
-  min-width: 48px;
-  padding: 0 var(--s-3);
+  min-height: var(--btn-h);
+  min-width: 52px;
+  padding: 0 var(--s-4);
   border: 0;
   border-radius: var(--r-btn);
   background: transparent;
@@ -235,10 +234,13 @@ textarea {
     color var(--m-out) var(--m-ease);
 }
 
-.seg button[aria-pressed="true"] {
-  background: var(--card);
+.seg button:hover {
   color: var(--ink);
-  box-shadow: 0 0 0 1px var(--line);
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--bg);
 }
 
 /* "Start over": words where there is room, an icon on a phone */
@@ -364,7 +366,7 @@ textarea {
   color: var(--bg);
 }
 
-.opt:lang(ur) {
+.opt:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2;
 }
 
@@ -621,6 +623,9 @@ button.opt:active:not(:disabled),
 }
 
 .pinned {
+  flex: none;
+  max-height: 50dvh;
+  overflow-y: auto;
   padding-top: var(--s-3);
 }
 
@@ -678,7 +683,7 @@ button.opt:active:not(:disabled),
   text-wrap: pretty;
 }
 
-.ack:lang(ur) {
+.ack:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -749,7 +754,7 @@ button.opt:active:not(:disabled),
   letter-spacing: -0.01em;
 }
 
-.step__title:lang(ur) {
+.step__title:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -805,7 +810,7 @@ button.opt:active:not(:disabled),
   line-height: 1.4;
 }
 
-.say:lang(ur) {
+.say:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -831,7 +836,7 @@ button.opt:active:not(:disabled),
   line-height: 1.35;
 }
 
-.ask__q legend:lang(ur) {
+.ask__q legend:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -892,7 +897,7 @@ button.opt:active:not(:disabled),
   letter-spacing: -0.01em;
 }
 
-.question:lang(ur) {
+.question:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -995,7 +1000,7 @@ button.opt:active:not(:disabled),
   margin-bottom: var(--s-2);
 }
 
-.crisis:lang(ur) h3 {
+.crisis:lang(ur):not(:lang(ur-Latn)) h3 {
   line-height: 2.2;
 }
 
@@ -1056,7 +1061,7 @@ button.opt:active:not(:disabled),
   margin-top: var(--s-1);
 }
 
-.generic:lang(ur) {
+.generic:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2.2;
 }
 
@@ -1191,7 +1196,7 @@ button.opt:active:not(:disabled),
   line-height: 1.4;
 }
 
-.field-label:lang(ur) {
+.field-label:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2;
 }
 
@@ -1224,10 +1229,6 @@ button.opt:active:not(:disabled),
   border-color: color-mix(in oklab, var(--ink) 45%, transparent);
 }
 
-.composer__shell:focus-within {
-  border-color: var(--action);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--action) 22%, transparent);
-}
 
 .composer textarea {
   flex: 1;
@@ -1237,9 +1238,9 @@ button.opt:active:not(:disabled),
   padding: 10px var(--s-3) 10px var(--s-4);
   border: 0;
   background: none;
+  border-radius: 22px;
   resize: none;
   field-sizing: content;
-  outline: none;
 }
 
 .composer textarea::placeholder {
@@ -1276,7 +1277,7 @@ button.opt:active:not(:disabled),
   color: var(--muted);
 }
 
-.privacy:lang(ur) {
+.privacy:lang(ur):not(:lang(ur-Latn)) {
   line-height: 2;
 }
 
@@ -1325,9 +1326,9 @@ button.opt:active:not(:disabled),
 }
 
 /* Nastaliq hangs below the Latin baseline: lift it so words sit in the middle of a pill */
-.btn:lang(ur),
-.opt:lang(ur),
-.chip:lang(ur),
-.quiet:lang(ur) {
+.btn:lang(ur):not(:lang(ur-Latn)),
+.opt:lang(ur):not(:lang(ur-Latn)),
+.chip:lang(ur):not(:lang(ur-Latn)),
+.quiet:lang(ur):not(:lang(ur-Latn)) {
   padding-bottom: 8px;
 }

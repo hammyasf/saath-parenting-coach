@@ -44,7 +44,7 @@ Why two models with separate jobs:
 - The model that writes the reply never decides whether replying is safe.
 - The gate returns numbers, so the thresholds live in code (`lib/decide.ts`), can be read in one screen, and are tested without a network.
 - An uncertain crisis signal counts as a crisis. If the gate or the check is down, no coach reply goes out.
-- The coach sits behind one function (`lib/coach.ts`), so the model can be swapped. It tries `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, then `gemini-3.8-flash`, each with an 8 second limit. The order was set by measuring: on the free tier the larger model returned "high demand" errors on most calls while the lighter ones answered in one to two seconds. A refused request is not retried.
+- The coach sits behind one function (`lib/coach.ts`), so the model can be swapped. It tries `gemini-3.5-flash-lite`, then `gemini-3.1-flash-lite`, then `gemini-3.8-flash`, each with a 14 second limit. The order was set by measuring: on the free tier the larger model returned "high demand" errors on most calls while the lighter ones answered in one to two seconds. A request the provider rejects outright (a 4xx) is not retried; a busy model or a reply in the wrong shape moves on to the next one.
 
 Two product decisions worth knowing:
 
@@ -58,8 +58,8 @@ The coach does not answer in chat text. It returns one of a few typed cards, and
 - **Questions first.** When the concern is thin ("my son doesn't listen"), the coach asks one or two questions with tappable answers written for that concern, then plans from the answers. It asks at most once, never after a plan, and never when a parent is in a hard moment.
 - **A plan with exact words.** One to three steps. Each opens to the words to say to the child, why it works at that age, a "Done" tick, and "Swap this step" (too hard / tried it / doesn't fit), which replaces that one step in place.
 - **Tonight.** A short timeline when the concern runs on a clock (bedtime, mornings).
-- **A check-in that comes back.** "Remind me" saves it in the browser. When it is due the page opens on it: Better / Same / Harder, then which step did not hold. The coach changes only what failed.
-- **Share and calendar.** "Share this plan" opens the phone's share sheet (WhatsApp included) or copies the plan as plain text. A saved check-in can be added to the calendar, so the reminder exists outside the browser tab.
+- **A check-in that comes back.** "Remind me" saves it in the browser; "Answer now" answers it on the card. When it is due the page opens on it: Better / Same / Harder, then which step did not hold. The coach changes only what failed.
+- **Share and calendar.** "Share this plan" opens the share sheet on a phone (WhatsApp included) and copies the plan as plain text on a computer. A saved check-in can be added to the calendar, so the reminder exists outside the browser tab.
 - **It keeps the start in mind.** The coach is shown the last six turns. Once a conversation is longer than that, what the parent said first and their tapped answers ride along as one pinned note, so the child's age and the details are not lost. Nothing from before a crisis panel is ever carried forward.
 - In the language and script the parent wrote in. Urdu script is laid out right to left.
 - Conversation history on the page, kept only in the browser. No login, no database.

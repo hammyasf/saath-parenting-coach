@@ -113,20 +113,24 @@ function CheckInAnswers({
   lang,
   steps,
   onAnswer,
+  focusFirst = false,
 }: {
   lang: Lang;
   steps: string[];
   onAnswer: (answer: string, label: string) => void;
+  /** Opened by a button that then disappears: move focus to the first answer. */
+  focusFirst?: boolean;
 }) {
   const [how, setHow] = useState<string | null>(null);
   if (how === null)
     return (
       <div className="row">
-        {(["better", "same", "harder"] as const).map((k) => (
+        {(["better", "same", "harder"] as const).map((k, i) => (
           <button
             key={k}
             type="button"
             className="opt"
+            autoFocus={focusFirst && i === 0}
             onClick={() => (k === "better" || steps.length < 2 ? onAnswer(t(k, lang), t(k, lang)) : setHow(t(k, lang)))}
           >
             {t(k, lang)}
@@ -307,7 +311,15 @@ export function PlanCard({
         </p>
         <p className="question">{plan.checkIn.question}</p>
         {answering ? (
-          <CheckInAnswers lang={lang} steps={plan.steps.map((st) => st.title)} onAnswer={onAnswer} />
+          <CheckInAnswers
+            lang={lang}
+            steps={plan.steps.map((st) => st.title)}
+            focusFirst
+            onAnswer={(a, label) => {
+              setAnswering(false);
+              onAnswer(a, label);
+            }}
+          />
         ) : (
           <div className="row">
             {reminded ? (
