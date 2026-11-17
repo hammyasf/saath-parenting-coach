@@ -1,5 +1,5 @@
 import { helplinesFor, type Helpline, type Region } from "@/lib/helplines";
-import { dirOf, t } from "@/lib/strings";
+import { dirOf, langAttr, t } from "@/lib/strings";
 import type { SavedCheckIn } from "@/lib/checkin";
 import type { CrisisCategory, Lang, Plan } from "@/lib/types";
 
@@ -43,7 +43,7 @@ export function PlanCard({
   onHelp: () => void;
 }) {
   return (
-    <article className="card plan" dir={dirOf(lang)} lang={lang === "ur" ? "ur" : "en"}>
+    <article className="card plan" dir={dirOf(lang)} lang={langAttr(lang)}>
       <p className="ack">{plan.acknowledge}</p>
       {plan.declined && <p className="declined">{plan.declined.pointer}</p>}
       <ol className="steps">
@@ -94,7 +94,7 @@ export function PlanCard({
 
 export function CrisisPanel({ category, lang, region }: { category: CrisisCategory; lang: Lang; region: Region }) {
   return (
-    <article className="card crisis" dir={dirOf(lang)} lang={lang === "ur" ? "ur" : "en"} role="alert">
+    <article className="card crisis" dir={dirOf(lang)} lang={langAttr(lang)}>
       <h3>{t("crisisTitle", lang)}</h3>
       <p>{t(`crisis_${category}`, lang)}</p>
       <Helplines lines={helplinesFor(region, category)} lang={lang} />
@@ -110,7 +110,7 @@ export function HelpBox({ lang, region, onClose }: { lang: Lang; region: Region;
     (h) => !seen.has(h.number) && seen.add(h.number),
   );
   return (
-    <section className="card crisis helpbox" dir={dirOf(lang)} lang={lang === "ur" ? "ur" : "en"} aria-label={t("getHelpNow", lang)}>
+    <section className="card crisis helpbox" dir={dirOf(lang)} lang={langAttr(lang)} aria-label={t("getHelpNow", lang)}>
       <div className="row between">
         <h3>{t("getHelpNow", lang)}</h3>
         <button type="button" className="icon" onClick={onClose} aria-label="Close">
@@ -124,7 +124,7 @@ export function HelpBox({ lang, region, onClose }: { lang: Lang; region: Region;
 
 export function NoteCard({ kind, lang }: { kind: "fallback" | "redirect"; lang: Lang }) {
   return (
-    <article className="card note" dir={dirOf(lang)} lang={lang === "ur" ? "ur" : "en"}>
+    <article className="card note" dir={dirOf(lang)} lang={langAttr(lang)}>
       <p>{t(kind, lang)}</p>
     </article>
   );
@@ -133,7 +133,7 @@ export function NoteCard({ kind, lang }: { kind: "fallback" | "redirect"; lang: 
 export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answer: string) => void }) {
   const { lang } = c;
   return (
-    <article className="card due" dir={dirOf(lang)} lang={lang === "ur" ? "ur" : "en"}>
+    <article className="card due" dir={dirOf(lang)} lang={langAttr(lang)}>
       <p className="eyebrow">{t("checkIn", lang)}</p>
       <p className="trying">
         {t("youWereTrying", lang)} <strong>{c.trying}</strong>
@@ -150,10 +150,9 @@ export function CheckInCard({ c, onAnswer }: { c: SavedCheckIn; onAnswer: (answe
   );
 }
 
-export function Skeleton({ label }: { label: string }) {
+export function Skeleton() {
   return (
-    <div className="card skeleton" role="status">
-      <span className="sr-only">{label}</span>
+    <div className="card skeleton" aria-hidden="true">
       <i />
       <i />
       <i />

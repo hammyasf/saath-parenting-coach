@@ -98,6 +98,9 @@ export type StringKey = keyof typeof S;
 
 export const t = (key: StringKey, lang: Lang): string => S[key][lang];
 
+/** BCP 47 tag: Roman Urdu is Urdu in Latin script, so screen readers do not read it as English. */
+export const langAttr = (lang: Lang) => (lang === "ur" ? "ur" : lang === "roman-ur" ? "ur-Latn" : "en");
+
 export const dirOf = (lang: Lang) => (lang === "ur" ? "rtl" : "ltr");
 
 /** Starter chips: one everyday concern per script. */

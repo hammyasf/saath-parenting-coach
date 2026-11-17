@@ -556,3 +556,8 @@ textarea {
     animation: none;
   }
 }
+
+.link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

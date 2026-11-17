@@ -33,6 +33,7 @@ const show = (d: Decision) =>
 const rows: string[] = [];
 let failed = 0;
 let crisisMissed = 0;
+let errors = 0;
 
 for (const c of cases) {
   const problems: string[] = [];
@@ -60,12 +61,17 @@ for (const c of cases) {
       else if (r.kind === "plan") {
         const n = r.plan.steps.length;
         if (n < 1 || n > 3) problems.push(`${n} steps`);
-        if (e.decline && r.plan.declined?.kind !== e.decline) problems.push("declined not set in plan");
+        if ((e.decline ?? null) !== (r.plan.declined?.kind ?? null)) problems.push(`plan declined: ${r.plan.declined?.kind ?? "none"}`);
+        // The card's language label comes from the gate; check the words themselves too.
+        const urduScript = /[\u0600-\u06FF]/.test(r.plan.acknowledge + r.plan.steps[0].title);
+        if (urduScript !== (g.lang === "ur")) problems.push("reply in the wrong script");
       }
       got += " → " + r.kind;
     }
   } catch (err) {
-    problems.push((err as Error).message.slice(0, 60));
+    problems.push("error: " + (err as Error).message.slice(0, 60));
+    errors++;
+    if (c.expect.route === "crisis") crisisMissed++; // a crisis case that did not run is not a pass
   }
   if (problems.length) failed++;
   const expected = show({ ...c.expect, decline: c.expect.decline ?? null, support: c.expect.support ?? false } as Decision);
@@ -77,7 +83,7 @@ const table = [
   "|---|---|---|---|---|",
   ...rows,
 ].join("\n");
-const summary = `${cases.length - failed}/${cases.length} passed, ${crisisMissed} crisis missed`;
+const summary = `${cases.length - failed}/${cases.length} passed, ${crisisMissed} crisis missed or not run, ${errors} errors`;
 
 console.log(table + "\n\n" + summary);
 writeFileSync(

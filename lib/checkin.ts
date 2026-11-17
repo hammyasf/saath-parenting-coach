@@ -6,6 +6,17 @@ import type { Lang } from "./types";
 export type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export type SavedCheckIn = { question: string; whenLabel: string; trying: string; lang: Lang; dueAt: number };
 
+const NO_STORE: Store = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+
+/** With site data blocked, even reading `window.localStorage` throws. Fall back to remembering nothing. */
+export function safeStore(get: () => Store): Store {
+  try {
+    return get() ?? NO_STORE;
+  } catch {
+    return NO_STORE;
+  }
+}
+
 const CHECKIN = "saath.checkin";
 const ITEMS = "saath.items";
 
@@ -29,7 +40,16 @@ export const saveCheckIn = (s: Store, c: SavedCheckIn) => write(s, CHECKIN, c);
 
 export function peekCheckIn(s: Store): SavedCheckIn | null {
   const c = read(s, CHECKIN) as SavedCheckIn | null;
-  return c && typeof c === "object" && typeof c.question === "string" && typeof c.dueAt === "number" ? c : null;
+  const str = (v: unknown) => typeof v === "string" && v.length > 0;
+  return c &&
+    typeof c === "object" &&
+    str(c.question) &&
+    str(c.whenLabel) &&
+    str(c.trying) &&
+    ["en", "ur", "roman-ur"].includes(c.lang) &&
+    Number.isFinite(c.dueAt)
+    ? c
+    : null;
 }
 
 export function dueCheckIn(s: Store, now: number): SavedCheckIn | null {

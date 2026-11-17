@@ -1,4 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
+import { gateWindow } from "./decide";
+import { validatePlan } from "./plan";
 import type { Lang, Plan, ReplyCheck, Turn } from "./types";
 
 export type CoachInput = {
@@ -85,35 +87,23 @@ function instructions({ lang, decline, support, failedRule }: CoachInput): strin
   return parts.join("\n\n");
 }
 
-const nonEmpty = (v: unknown): v is string => typeof v === "string" && v.trim().length > 0;
-
-/** Validate the model's JSON by hand; the schema is a request, not a guarantee. */
 export function parsePlan(text: string): Plan | null {
-  let p: Plan;
   try {
-    p = JSON.parse(text);
+    return validatePlan(JSON.parse(text));
   } catch {
     return null;
   }
-  if (!p || typeof p !== "object") return null;
-  const { acknowledge, steps, watchFor, checkIn, declined } = p;
-  if (!nonEmpty(acknowledge) || !nonEmpty(watchFor)) return null;
-  if (!Array.isArray(steps) || steps.length < 1 || steps.length > 3) return null;
-  if (!steps.every((s) => s && nonEmpty(s.title) && nonEmpty(s.how))) return null;
-  if (!checkIn || !nonEmpty(checkIn.question) || !nonEmpty(checkIn.whenLabel)) return null;
-  const hours = Number(checkIn.afterHours);
-  if (!Number.isFinite(hours) || hours < 1 || hours > 168) return null;
-  if (declined != null && !(["medical", "legal"].includes(declined.kind) && nonEmpty(declined.pointer))) return null;
-  return {
-    acknowledge,
-    steps: steps.map(({ title, how }) => ({ title, how })),
-    watchFor,
-    checkIn: { question: checkIn.question, whenLabel: checkIn.whenLabel, afterHours: hours },
-    declined: declined ? { kind: declined.kind, pointer: declined.pointer } : null,
-  };
 }
 
-const WHO = { parent: "Parent", coach: "Coach", crisis: "(The coach showed emergency help here.)" } as const;
+/**
+ * The conversation the coach is shown. It is exactly the window the gate judged:
+ * the coach must never see a turn that was not checked first.
+ */
+export function conversationFor(turns: Turn[]): string {
+  return gateWindow(turns)
+    .map((t) => `${t.role === "parent" ? "Parent" : "Coach"}: ${t.text}`)
+    .join("\n");
+}
 
 let client: GoogleGenAI | undefined;
 
@@ -123,15 +113,12 @@ let client: GoogleGenAI | undefined;
  */
 export async function runCoach(input: CoachInput): Promise<Plan | null> {
   client ??= new GoogleGenAI({});
-  const conversation = input.turns
-    .slice(-8)
-    .map((t) => (t.role === "crisis" ? WHO.crisis : `${WHO[t.role]}: ${t.text}`))
-    .join("\n");
   try {
     const interaction = await client.interactions.create({
       model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
       system_instruction: instructions(input),
-      input: conversation,
+      input: conversationFor(input.turns),
+      store: false, // do not keep parent messages at Google
       response_format: { type: "text", mime_type: "application/json", schema },
     });
     return parsePlan(interaction.output_text ?? "");

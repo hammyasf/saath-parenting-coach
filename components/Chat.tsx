@@ -8,18 +8,16 @@ import {
   dueCheckIn,
   loadItems,
   peekCheckIn,
+  safeStore,
   saveCheckIn,
   saveItems,
   type SavedCheckIn,
 } from "@/lib/checkin";
 import type { Region } from "@/lib/helplines";
-import { MAX_TEXT, MAX_TURNS } from "@/lib/request";
-import { STARTERS, dirOf, t } from "@/lib/strings";
-import type { CoachResponse, Lang, Plan, Turn } from "@/lib/types";
-
-type Item =
-  | { id: string; kind: "parent"; text: string }
-  | { id: string; kind: "reply"; response: CoachResponse };
+import { isItem, newId, toTurns, type Item } from "@/lib/items";
+import { MAX_TEXT } from "@/lib/request";
+import { STARTERS, dirOf, langAttr, t } from "@/lib/strings";
+import type { CoachResponse, Lang, Plan } from "@/lib/types";
 
 const REGIONS: { value: Region; label: string }[] = [
   { value: "pk", label: "Pakistan" },
@@ -27,21 +25,24 @@ const REGIONS: { value: Region; label: string }[] = [
   { value: "other", label: "Other" },
 ];
 
-const summary = (p: Plan) =>
-  `Plan: ${p.steps.map((s) => s.title).join("; ")}. Check-in question: ${p.checkIn.question}`;
+const store = () => safeStore(() => window.localStorage);
 
-/** What the server needs: parent messages, a one-line memory of each plan, and where a crisis panel was shown. */
-function toTurns(items: Item[]): Turn[] {
-  const turns: Turn[] = [];
-  for (const it of items) {
-    if (it.kind === "parent") turns.push({ role: "parent", text: it.text });
-    else if (it.response.kind === "plan") turns.push({ role: "coach", text: summary(it.response.plan) });
-    else if (it.response.kind === "crisis") turns.push({ role: "crisis", text: "" });
+/** A first guess at which helplines to show, from the device's time zone. The parent can change it. */
+function guessRegion(): Region {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return tz === "Asia/Karachi" ? "pk" : tz === "Asia/Dubai" ? "ae" : "other";
+  } catch {
+    return "other";
   }
-  return turns.slice(-MAX_TURNS);
 }
 
-const store = () => window.localStorage;
+/** What a screen reader hears when a reply arrives: the gist, once. */
+function announce(r: CoachResponse): string {
+  if (r.kind === "plan") return [r.plan.acknowledge, ...r.plan.steps.map((s) => s.title)].join(". ");
+  if (r.kind === "crisis") return `${t("crisisTitle", r.lang)}. ${t(`crisis_${r.category}`, r.lang)}`;
+  return t(r.kind, r.lang);
+}
 
 export default function Chat() {
   const [items, setItems] = useState<Item[]>([]);
@@ -50,11 +51,12 @@ export default function Chat() {
   const [text, setText] = useState("");
   const [note, setNote] = useState("");
   const [ui, setUi] = useState<Lang>("en");
-  const [region, setRegion] = useState<Region>("pk");
+  const [region, setRegion] = useState<Region>("other");
   const [due, setDue] = useState<SavedCheckIn | null>(null);
   const [reminded, setReminded] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [spoken, setSpoken] = useState("");
 
   const itemsRef = useRef(items);
   const busy = useRef(false);
@@ -64,13 +66,11 @@ export default function Chat() {
   // Restore what this browser remembers. Runs once, after first paint, so the server and client render match.
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect */
-    setItems(loadItems(store()) as Item[]);
+    setItems(loadItems(store()).filter(isItem));
     setDue(dueCheckIn(store(), Date.now()));
     setDemo(new URLSearchParams(window.location.search).has("demo"));
-    try {
-      const r = store().getItem("saath.region");
-      if (r === "pk" || r === "ae" || r === "other") setRegion(r);
-    } catch {}
+    const r = store().getItem("saath.region");
+    setRegion(r === "pk" || r === "ae" || r === "other" ? r : guessRegion());
     setLoaded(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
@@ -91,7 +91,7 @@ export default function Chat() {
     setPending(true);
     setNote("");
 
-    const mine: Item = { id: crypto.randomUUID(), kind: "parent", text: message };
+    const mine: Item = { id: newId(), kind: "parent", text: message };
     const next = [...itemsRef.current, mine];
     setItems(next);
     setText("");
@@ -116,8 +116,10 @@ export default function Chat() {
       busy.current = false;
       setPending(false);
     }
-    setItems((v) => [...v, { id: crypto.randomUUID(), kind: "reply", response }]);
-    box.current?.focus();
+    setItems((v) => [...v, { id: newId(), kind: "reply", response }]);
+    setSpoken(announce(response));
+    // Do not pull focus (and a phone keyboard) over a crisis panel's phone numbers.
+    if (response.kind !== "crisis") box.current?.focus();
   }
 
   function remind(id: string, plan: Plan, lang: Lang) {
@@ -165,9 +167,7 @@ export default function Chat() {
 
   function pickRegion(r: Region) {
     setRegion(r);
-    try {
-      store().setItem("saath.region", r);
-    } catch {}
+    store().setItem("saath.region", r);
   }
 
   return (
@@ -175,7 +175,7 @@ export default function Chat() {
       <header className="top">
         <div className="brand">
           <h1>Saath</h1>
-          <p dir={dirOf(ui)} lang={ui === "ur" ? "ur" : "en"}>
+          <p dir={dirOf(ui)} lang={langAttr(ui)}>
             {t("tagline", ui)}
           </p>
         </div>
@@ -198,7 +198,7 @@ export default function Chat() {
               ))}
             </select>
           </label>
-          <button type="button" className="link" onClick={reset}>
+          <button type="button" className="link" onClick={reset} disabled={pending}>
             {t("reset", ui)}
           </button>
         </div>
@@ -216,10 +216,10 @@ export default function Chat() {
         </div>
       )}
 
-      <main className="thread" aria-live="polite">
+      <main className="thread">
         {loaded && items.length === 0 && !due && (
           <section className="empty">
-            <h2 dir={dirOf(ui)} lang={ui === "ur" ? "ur" : "en"}>
+            <h2 dir={dirOf(ui)} lang={langAttr(ui)}>
               {t("welcome", ui)}
             </h2>
             <div className="starters">
@@ -229,7 +229,7 @@ export default function Chat() {
                   type="button"
                   className="chip"
                   dir={dirOf(s.lang)}
-                  lang={s.lang === "ur" ? "ur" : "en"}
+                  lang={langAttr(s.lang)}
                   onClick={() => send(s.text)}
                 >
                   {s.text}
@@ -263,9 +263,13 @@ export default function Chat() {
         )}
 
         {due && !pending && <CheckInCard c={due} onAnswer={(a) => answerCheckIn(due, a)} />}
-        {pending && <Skeleton label={t("thinking", ui)} />}
+        {pending && <Skeleton />}
         <div ref={end} />
       </main>
+
+      <p className="sr-only" role="status">
+        {pending ? t("thinking", ui) : spoken}
+      </p>
 
       <footer className="composer">
         {demo && (
@@ -310,7 +314,7 @@ export default function Chat() {
             {note}
           </p>
         )}
-        <p className="privacy" dir={dirOf(ui)} lang={ui === "ur" ? "ur" : "en"}>
+        <p className="privacy" dir={dirOf(ui)} lang={langAttr(ui)}>
           {t("privacy", ui)}
         </p>
       </footer>

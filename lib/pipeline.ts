@@ -6,6 +6,9 @@ import type { CoachResponse, GateResult, Turn } from "./types";
 
 export type Deps = { gate: typeof runGate; coach: typeof runCoach; check: typeof checkReply };
 
+const LANGS = ["en", "ur", "roman-ur"];
+const PROBABILITIES = ["danger", "abuse", "selfHarm", "parentStruggle", "medicalAsk", "legalAsk", "parenting"] as const;
+
 const real: Deps = { gate: runGate, coach: runCoach, check: checkReply };
 
 /**
@@ -16,6 +19,10 @@ export async function respond(turns: Turn[], deps: Deps = real): Promise<CoachRe
   let g: GateResult;
   try {
     g = await deps.gate(turns);
+    // A missing or non-numeric probability would compare false against every
+    // threshold and slip through as "safe". Treat a malformed result as no result.
+    if (!LANGS.includes(g?.lang) || !PROBABILITIES.every((k) => Number.isFinite(g[k]) && g[k] >= 0 && g[k] <= 1))
+      throw new Error("malformed gate result");
   } catch {
     return { kind: "fallback", lang: "en" };
   }
