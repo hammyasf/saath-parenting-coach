@@ -241,15 +241,41 @@ textarea {
   box-shadow: 0 0 0 1px var(--line);
 }
 
+/* the region picker: our own chevron, so it sits inside the pill in every browser */
+.region {
+  position: relative;
+  display: inline-flex;
+}
+
 .region select {
+  appearance: none;
   height: var(--btn-h);
-  padding: 0 var(--s-3);
+  padding: 0 36px 0 var(--s-4);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-btn);
   background: var(--bg);
   font-size: var(--t-small);
   font-weight: 500;
   cursor: pointer;
+  transition: border-color var(--m-in) var(--m-ease);
+}
+
+.region select:hover {
+  border-color: var(--ink);
+}
+
+.region::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 16px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin-top: -6px;
+  border: solid var(--muted);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+  pointer-events: none;
 }
 
 /* "Start over": words where there is room, an icon on a phone */
