@@ -16,6 +16,8 @@ pnpm dev
 
 Open http://localhost:3000. Add `?demo=1` to show a "skip to check-in time" control.
 
+Set `SITE_PASSWORD` to put the whole site behind one shared password (`proxy.ts`). The hosted demo uses it; leave it empty locally.
+
 ```bash
 pnpm test    # unit tests, no network
 pnpm eval    # the safety test sheet, uses both APIs
