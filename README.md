@@ -2,7 +2,7 @@
 
 A small parenting coach. A parent types a concern in English, Urdu, or Roman Urdu and gets a short plan they can act on today, plus a check-in that comes back.
 
-**Live:** _link added after deploy_
+**Live:** https://saath-parenting-coach.vercel.app (asks for a password; it is in the email. Leave the user name empty or type anything.)
 
 ## Run it
 
