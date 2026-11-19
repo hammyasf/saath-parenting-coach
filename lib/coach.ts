@@ -216,7 +216,9 @@ export async function tryModels<T>(models: string[], call: (model: string) => Pr
     } catch (e) {
       const status = (e as { status?: number }).status;
       // Operational detail only: never the parent's words.
-      console.warn(`coach: ${model} failed (${status ?? (e as Error).name})`);
+      // The provider's own reason helps tell a bad key from a busy model; it never contains the parent's text.
+      const why = status ? `: ${String((e as Error).message).replace(/AIza[\w-]+/g, "[key]").slice(0, 200)}` : "";
+      console.warn(`coach: ${model} failed (${status ?? (e as Error).name})${why}`);
       if (status && status >= 400 && status < 500 && status !== 429) return null;
     }
   }
