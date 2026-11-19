@@ -11,6 +11,7 @@ const urdu = Noto_Nastaliq_Urdu({
 const outfit = Outfit({ variable: "--font-outfit", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://saath-parenting-coach.vercel.app"),
   title: "Saath: a parenting coach for parents, in English and Urdu",
   description: "Type what is going on with your child and get a short, safe plan, with a check-in that comes back.",
   openGraph: {

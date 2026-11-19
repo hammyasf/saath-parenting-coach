@@ -439,16 +439,19 @@ button.opt:active:not(:disabled),
 }
 
 .hero__media {
+  position: relative;
   grid-column: 8 / span 5;
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--s-6);
+  padding: var(--s-5);
   border-radius: var(--r-lg);
-  background: var(--surface);
+  background: #1f3d2c; /* the illustration's own ground, shown while it loads */
+}
+
+.hero__art {
+  object-fit: cover;
+  object-position: 92% 100%;
 }
 
 .hero h1 {
@@ -488,18 +491,29 @@ button.opt:active:not(:disabled),
   margin-top: var(--s-5);
 }
 
-/* the picture: a real reply card, not live */
+/* a real reply card, not live, laid over the upper part of the picture */
 .mock {
-  width: min(100%, 440px);
+  position: relative;
+  width: min(100%, 380px);
+}
+
+.mock .card {
+  padding: var(--s-4) var(--s-5);
+  box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.55);
 }
 
 .mock .ack {
-  font-size: 18px;
-  margin-bottom: var(--s-4);
+  font-size: 17px;
+  margin-bottom: var(--s-3);
 }
 
 .mock .step {
   padding: var(--s-2) 0;
+}
+
+.mock .step:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 
 .mock .step__head {
@@ -507,16 +521,16 @@ button.opt:active:not(:disabled),
   cursor: default;
 }
 
+.mock .step__title {
+  font-size: var(--t-body);
+}
+
 .mock-more {
   margin-top: var(--s-2);
 }
 
-.mock .checkin {
-  margin-top: var(--s-4);
-}
-
-.mock .opt {
-  cursor: default;
+.mock .say {
+  font-size: var(--t-body);
 }
 
 @media (max-width: 1023px) {
@@ -550,31 +564,14 @@ button.opt:active:not(:disabled),
     min-height: 196px;
     height: auto;
     margin-top: var(--s-4);
-    padding: var(--s-2);
     border-radius: var(--r-md);
   }
-  .mock .ack,
-  .mock .mock-more,
-  .mock .checkin .row {
+  .hero__art {
+    object-position: 100% 100%;
+  }
+  /* no room for the card beside the figures on a phone: the picture stands alone */
+  .mock {
     display: none;
-  }
-  .mock .card {
-    padding: var(--s-3);
-    border-radius: var(--r-sm);
-  }
-  .mock .step {
-    padding: var(--s-1) 0;
-  }
-  .mock .step:last-child {
-    border-bottom: 0;
-  }
-  .mock .checkin {
-    margin-top: var(--s-2);
-    padding: var(--s-2) var(--s-3);
-    border-radius: var(--r-sm);
-  }
-  .mock .question {
-    margin-bottom: 0;
   }
 }
 

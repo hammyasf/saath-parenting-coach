@@ -1,4 +1,6 @@
+import Image from "next/image";
 import { useState } from "react";
+import heroArt from "@/public/hero.jpg";
 import { directoriesFor, phonesFor } from "@/lib/helplines";
 import { dirOf, langAttr, t } from "@/lib/strings";
 import type { SavedCheckIn } from "@/lib/checkin";
@@ -424,10 +426,15 @@ export function Skeleton({ label }: { label: string }) {
   );
 }
 
-/** The first screen's picture: what a reply looks like, before the parent has typed anything. */
+/** The first screen's picture: the moment the app is for, with a real reply card laid over it. */
 export function ExampleCard() {
   return (
-    <div className="hero__media" role="img" aria-label="Example reply: a plan card with three steps, the words to say, and a check-in question for tomorrow morning">
+    <div
+      className="hero__media"
+      role="img"
+      aria-label="Illustration of a mother reading to her small son at bedtime. Over it, an example reply: a plan card with three steps and the words to say."
+    >
+      <Image className="hero__art" src={heroArt} alt="" fill priority sizes="(max-width: 1023px) 100vw, 42vw" />
       <div className="mock" aria-hidden="true">
         <div className="card">
           <p className="ack">He comes out of his room five or six times after lights out.</p>
@@ -453,17 +460,6 @@ export function ExampleCard() {
               </li>
             ))}
           </ol>
-          <div className="checkin">
-            <p className="eyebrow">Check-in · tomorrow morning</p>
-            <p className="question">How many times did he come out?</p>
-            <div className="row">
-              {["Better", "Same", "Harder"].map((o) => (
-                <span key={o} className="opt">
-                  {o}
-                </span>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

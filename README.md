@@ -119,6 +119,7 @@ The safety decision is right on all 25, with no crisis missed and no threshold t
 - Urdu-script copy and test cases were written by a model and checked by back-translation, not reviewed by a native reader.
 - The request cap is in memory, per server instance.
 - The brief names no country. The crisis panel assumes the UAE first, because the team is in Dubai, and shows 999 and the child protection line 116111; both were read on an official Abu Dhabi Police page on 17 Nov 2026 (sources in `lib/helplines.ts`). Under them, for a parent in another country: "call your local emergency number" and links to three directories of helplines by country. No UAE mental-health line could be confirmed on an official page, so self-harm shows 999 and "go to the nearest hospital".
+- The illustration on the first screen was generated with Google Flow (Nano Banana) and cropped by hand.
 - This is a demo, not a medical or emergency service.
 
 ## Privacy
