@@ -392,10 +392,24 @@ export function HelpBox({ lang, onClose }: { lang: Lang; onClose: () => void }) 
   );
 }
 
-export function NoteCard({ kind, lang }: { kind: "fallback" | "redirect"; lang: Lang }) {
+export function NoteCard({
+  kind,
+  lang,
+  onRetry,
+}: {
+  kind: "fallback" | "redirect";
+  lang: Lang;
+  /** Given for the newest card when the coach could not answer: send the same message again. */
+  onRetry?: () => void;
+}) {
   return (
     <article className="card note" dir={dirOf(lang)} lang={langAttr(lang)}>
       <p>{t(kind, lang)}</p>
+      {onRetry && (
+        <button type="button" className="btn btn--secondary note__retry" onClick={onRetry}>
+          {t("tryAgain", lang)}
+        </button>
+      )}
     </article>
   );
 }

@@ -21,6 +21,11 @@ import type { CoachResponse, Lang, Plan } from "@/lib/types";
 
 const store = () => safeStore(() => window.localStorage);
 
+// When the page was opened with a password in its address (https://user:pass@host/), a browser
+// refuses fetch("/api/coach") because the address it resolves against carries credentials.
+// The origin never does, so build the full address from it.
+const coachUrl = () => `${window.location.origin}/api/coach`;
+
 /** What a screen reader hears when a reply arrives: the gist, once. */
 function announce(r: CoachResponse): string {
   if (r.kind === "plan") return [r.plan.acknowledge, ...r.plan.steps.map((s) => s.title)].join(". ");
@@ -94,7 +99,7 @@ export default function Chat() {
 
     let response: CoachResponse;
     try {
-      const res = await fetch("/api/coach", {
+      const res = await fetch(coachUrl(), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ turns: toTurns(next) }),
@@ -132,7 +137,7 @@ export default function Chat() {
     try {
       const turns = toTurns(itemsRef.current.slice(0, at + 1));
       turns.push({ role: "parent", text: `${t("swap", lang)}: ${plan.steps[index].title}. ${reason}.` });
-      const res = await fetch("/api/coach", {
+      const res = await fetch(coachUrl(), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ turns, mode: "swap" }),
@@ -163,6 +168,15 @@ export default function Chat() {
       setItems((v) => [...v, { id: newId(), kind: "reply", response: crisis }]);
       setSpoken(announce(crisis));
     } else setSwapFailed(id);
+  }
+
+  /** The coach could not answer: drop that card and the message before it, and send the message again. */
+  function retry() {
+    const all = itemsRef.current;
+    const mine = all.at(-2);
+    if (busy.current || all.at(-1)?.kind !== "reply" || mine?.kind !== "parent") return;
+    itemsRef.current = all.slice(0, -2);
+    send(mine.text, mine.label);
   }
 
   function toggleDone(id: string, index: number) {
@@ -421,7 +435,12 @@ export default function Chat() {
                   ) : it.response.kind === "crisis" ? (
                     <CrisisPanel key={it.id} category={it.response.category} lang={it.response.lang} />
                   ) : it.response.kind === "step" ? null : (
-                    <NoteCard key={it.id} kind={it.response.kind} lang={it.response.lang} />
+                    <NoteCard
+                      key={it.id}
+                      kind={it.response.kind}
+                      lang={it.response.lang}
+                      onRetry={it.response.kind === "fallback" && it.id === items.at(-1)?.id && !pending ? retry : undefined}
+                    />
                   ),
                 )}
                 {due && !pending && <CheckInCard c={due} onAnswer={(a, label) => answerCheckIn(due, a, label)} />}

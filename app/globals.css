@@ -1329,3 +1329,7 @@ button.opt:active:not(:disabled),
 .quiet:lang(ur):not(:lang(ur-Latn)) {
   padding-bottom: 8px;
 }
+
+.note__retry {
+  margin-top: var(--s-3);
+}

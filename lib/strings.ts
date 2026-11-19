@@ -101,6 +101,7 @@ const S = {
     ur: "اگر کبھی لگے کہ آپ بچے کو نقصان پہنچا سکتے ہیں تو مدد یہاں ہے۔",
     "roman-ur": "Agar kabhi lagay ke aap bachay ko nuqsan pohancha sakte hain, madad yahan hai.",
   },
+  tryAgain: { en: "Try again", ur: "دوبارہ کوشش کریں", "roman-ur": "Dobara koshish karein" },
   fallback: {
     en: "I can't answer this one well right now. Try saying it another way, or try again in a minute.",
     ur: "میں ابھی اس کا اچھا جواب نہیں دے سکتا۔ دوسرے الفاظ میں لکھیں یا تھوڑی دیر بعد کوشش کریں۔",
